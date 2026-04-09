@@ -18,515 +18,657 @@
       --red:      #f85149;
       --red-bg:   #1f0d0d;
       --blue:     #58a6ff;
+      --purple:   #bc8cff;
       --radius:   10px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
-    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
 
     /* ── Header ── */
     header {
       background: var(--card);
       border-bottom: 1px solid var(--border);
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+      position: sticky; top: 0; z-index: 100;
     }
-    .logo { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 9px; }
-    .pulse {
-      width: 9px; height: 9px;
-      border-radius: 50%;
-      background: var(--green);
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
+    .logo { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: glow 2s infinite; }
+    @keyframes glow {
       0%,100% { box-shadow: 0 0 0 0 rgba(63,185,80,.5); }
-      50%      { box-shadow: 0 0 0 6px rgba(63,185,80,0); }
+      50%      { box-shadow: 0 0 0 5px rgba(63,185,80,0); }
     }
-    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-    .timer-box {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 7px 14px;
-      text-align: center;
-    }
-    .timer-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-    .timer-value { font-size: 19px; font-weight: 700; color: var(--blue); font-variant-numeric: tabular-nums; }
-
-    .btn {
-      background: #238636;
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      padding: 8px 16px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity .2s;
-    }
+    .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .timer-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; text-align: center; }
+    .timer-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .timer-value { font-size: 18px; font-weight: 700; color: var(--blue); font-variant-numeric: tabular-nums; }
+    .btn { background: #238636; color: #fff; border: none; border-radius: var(--radius); padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .2s; }
     .btn:hover { opacity: .85; }
     .btn:disabled { opacity: .4; cursor: not-allowed; }
-
-    .notif-btn {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: var(--radius);
-      padding: 7px 11px;
-      font-size: 15px;
-      cursor: pointer;
-    }
+    .btn-red  { background: #b91c1c; }
+    .btn-blue { background: #1d4ed8; }
+    .btn-gray { background: #30363d; }
+    .notif-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius); padding: 6px 10px; font-size: 14px; cursor: pointer; }
     .notif-btn.active { border-color: var(--green); color: var(--green); }
 
-    /* ── Status bar ── */
-    .status-bar {
-      padding: 8px 24px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 12px;
-      color: var(--muted);
-      flex-wrap: wrap;
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); background: var(--card); padding: 0 24px; }
+    .tab {
+      padding: 12px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+      color: var(--muted); border-bottom: 2px solid transparent; transition: all .15s;
+      display: flex; align-items: center; gap: 6px;
     }
-    .sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
-    .sdot.scanning { background: var(--yellow); animation: pulse 1s infinite; }
-    .sdot.done     { background: var(--green); }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--text); border-bottom-color: var(--blue); }
+    .tab-badge { background: var(--green-bg); color: var(--green); border-radius: 20px; padding: 1px 7px; font-size: 10px; font-weight: 700; }
+    .tab-badge.red { background: var(--red-bg); color: var(--red); }
 
-    /* ── Summary ── */
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
-      padding: 18px 24px;
-    }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-    }
-    .card-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
-    .card-value { font-size: 26px; font-weight: 700; }
+    /* ── Status bar ── */
+    .status-bar { padding: 7px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+    .sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .sdot.scanning { background: var(--yellow); animation: glow 1s infinite; }
+    .sdot.done     { background: var(--green); }
+    .sdot.sim-on   { background: var(--purple); animation: glow 1.5s infinite; }
+
+    /* ── Summary cards ── */
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; padding: 16px 24px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 15px; }
+    .card-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+    .card-value { font-size: 24px; font-weight: 700; }
     .cv-green  { color: var(--green); }
     .cv-yellow { color: var(--yellow); }
     .cv-blue   { color: var(--blue); }
     .cv-red    { color: var(--red); }
+    .cv-purple { color: var(--purple); }
+    .cv-muted  { color: var(--muted); }
+    .card-sub  { font-size: 11px; color: var(--muted); margin-top: 3px; }
 
-    /* ── Section ── */
-    .section { padding: 0 24px 28px; }
-    .sec-title {
-      font-size: 15px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding-top: 4px;
-    }
-    .sec-sub { font-size: 12px; font-weight: 400; color: var(--muted); }
+    /* ── Sections ── */
+    .section { padding: 0 24px 24px; }
+    .sec-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; padding-top: 6px; display: flex; align-items: center; gap: 7px; }
+    .sec-sub { font-size: 11px; font-weight: 400; color: var(--muted); }
 
-    /* ── Table ── */
-    .tbl-wrap {
-      overflow-x: auto;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      margin-bottom: 24px;
-    }
+    /* ── Tables ── */
+    .tbl-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 22px; }
     table { width: 100%; border-collapse: collapse; }
-    thead th {
-      background: #1c2128;
-      padding: 9px 12px;
-      text-align: left;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: .4px;
-      white-space: nowrap;
-    }
-    tbody tr { border-top: 1px solid var(--border); transition: background .12s; }
+    thead th { background: #1c2128; padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+    tbody tr { border-top: 1px solid var(--border); transition: background .1s; }
     tbody tr:hover { background: #1c2128; }
-    td { padding: 9px 12px; white-space: nowrap; vertical-align: middle; }
-
+    td { padding: 8px 12px; white-space: nowrap; vertical-align: middle; }
     .coin-sym { font-weight: 700; font-size: 14px; }
 
     /* Signal badges */
-    .sig {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 14px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .3px;
-    }
-    .sig-buy      { background: var(--green-bg);  color: var(--green);  border: 1px solid #2a4a2a; }
-    .sig-buy-hold { background: #0f2a1a;           color: #52c27a;       border: 1px solid #1a3a2a; }
-    .sig-sell     { background: var(--red-bg);    color: var(--red);    border: 1px solid #4a1a1a; }
-    .sig-sell-hold{ background: #1f1010;           color: #c26060;       border: 1px solid #3a1a1a; }
-    .sig-neutral  { background: #1c2128;           color: var(--muted);  border: 1px solid var(--border); }
-    .sig-nodata   { background: #1c2128;           color: #555;          border: 1px solid var(--border); }
+    .sig { display: inline-block; padding: 2px 7px; border-radius: 12px; font-size: 10px; font-weight: 700; letter-spacing: .3px; }
+    .sig-buy       { background: var(--green-bg); color: var(--green);  border: 1px solid #2a4a2a; }
+    .sig-buy-hold  { background: #0f2a1a;         color: #52c27a;       border: 1px solid #1a3a2a; }
+    .sig-sell      { background: var(--red-bg);   color: var(--red);    border: 1px solid #4a1a1a; }
+    .sig-sell-hold { background: #1f1010;         color: #c26060;       border: 1px solid #3a1a1a; }
+    .sig-neutral   { background: #1c2128;         color: var(--muted);  border: 1px solid var(--border); }
+    .sig-nodata    { background: #1c2128;         color: #555;          border: 1px solid var(--border); }
 
-    /* Buy count bar */
+    /* UT bar (scanner) */
     .buy-bar { display: flex; gap: 3px; align-items: center; }
-    .buy-dot {
-      width: 9px; height: 9px;
-      border-radius: 50%;
-      background: var(--border);
-    }
+    .buy-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
     .buy-dot.fresh { background: var(--green); }
     .buy-dot.hold  { background: #2a5c3a; }
 
+    /* P&L colors */
+    .pnl-pos { color: var(--green); font-weight: 700; }
+    .pnl-neg { color: var(--red);   font-weight: 700; }
+    .pnl-neu { color: var(--muted); }
+
+    /* ── Sim controls ── */
+    .sim-controls {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 14px 24px; border-bottom: 1px solid var(--border);
+      background: var(--card);
+    }
+    .sim-controls label { font-size: 12px; color: var(--muted); }
+    .sim-input {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 6px 10px; font-size: 13px; width: 110px;
+    }
+    .sim-status-pill {
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    }
+    .sim-status-pill.on  { background: #1a2e1a; color: var(--green); border: 1px solid #2a4a2a; }
+    .sim-status-pill.off { background: #1c2128; color: var(--muted); border: 1px solid var(--border); }
+
+    /* ── Trade row coloring ── */
+    .trade-win  { border-left: 3px solid var(--green); }
+    .trade-loss { border-left: 3px solid var(--red); }
+
     /* ── Loader ── */
-    .loader {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-      padding: 60px;
-      color: var(--muted);
-    }
-    .spinner {
-      width: 38px; height: 38px;
-      border: 3px solid var(--border);
-      border-top-color: var(--blue);
-      border-radius: 50%;
-      animation: spin .75s linear infinite;
-    }
+    .loader { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 50px; color: var(--muted); }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .75s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Empty state ── */
+    .empty { padding: 28px; text-align: center; color: var(--muted); font-size: 13px; }
+
     /* ── Toast ── */
-    #toast {
-      position: fixed;
-      bottom: 22px; right: 22px;
-      background: var(--card);
-      border: 1px solid var(--green);
-      border-radius: var(--radius);
-      padding: 13px 16px;
-      max-width: 300px;
-      z-index: 9999;
-      display: none;
-      animation: slideIn .25s ease;
-    }
-    @keyframes slideIn {
-      from { transform: translateY(16px); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
-    }
-    .toast-title { font-weight: 700; color: var(--green); margin-bottom: 3px; font-size: 13px; }
-    .toast-body  { font-size: 12px; color: var(--muted); }
+    #toast { position: fixed; bottom: 20px; right: 20px; background: var(--card); border: 1px solid var(--green); border-radius: var(--radius); padding: 12px 15px; max-width: 290px; z-index: 9999; display: none; animation: slideIn .2s ease; }
+    @keyframes slideIn { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .toast-title { font-weight: 700; color: var(--green); margin-bottom: 2px; font-size: 13px; }
+    .toast-body  { font-size: 11px; color: var(--muted); }
 
     /* ── Legend ── */
-    .legend {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      font-size: 11px;
-      color: var(--muted);
-      padding: 0 24px 16px;
-    }
-    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); padding: 0 24px 14px; }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+
+    /* ── Tab pages ── */
+    .tab-page { display: none; }
+    .tab-page.active { display: block; }
 
     @media (max-width: 600px) {
-      header, .summary, .section, .legend { padding-left: 14px; padding-right: 14px; }
+      header, .summary, .section, .legend, .tabs, .sim-controls, .status-bar { padding-left: 12px; padding-right: 12px; }
+      .tab { padding: 10px 12px; }
     }
   </style>
 </head>
 <body>
 
+<!-- ══ HEADER ════════════════════════════════════════════════ -->
 <header>
   <div class="logo">
     <div class="pulse"></div>
     UT Bot Tarayıcı
-    <span style="font-size:11px;color:var(--muted);font-weight:400">15m · 1H · 2H · 4H</span>
   </div>
   <div class="header-right">
-    <div class="timer-box">
-      <div class="timer-label">Sonraki Tarama</div>
-      <div class="timer-value" id="countdown">--:--</div>
+    <div class="timer-box" id="scanTimerBox">
+      <div class="timer-label">Tarama</div>
+      <div class="timer-value" id="scanCountdown">--:--</div>
     </div>
-    <button class="notif-btn" id="notifBtn" onclick="toggleNotif()" title="Bildirimleri Aç/Kapat">🔔</button>
+    <button class="notif-btn" id="notifBtn" onclick="toggleNotif()" title="Bildirimler">🔔</button>
     <button class="btn" id="scanBtn" onclick="forceScan()">Şimdi Tara</button>
   </div>
 </header>
 
+<!-- ══ TABS ══════════════════════════════════════════════════ -->
+<div class="tabs">
+  <div class="tab active" id="tab-scanner" onclick="switchTab('scanner')">
+    📊 Tarayıcı
+    <span class="tab-badge" id="badge-buy">0</span>
+  </div>
+  <div class="tab" id="tab-sim" onclick="switchTab('sim')">
+    🤖 Simülasyon
+    <span class="tab-badge" id="badge-sim">KAPALI</span>
+  </div>
+</div>
+
+<!-- ══ STATUS BAR ════════════════════════════════════════════ -->
 <div class="status-bar">
   <div class="sdot" id="sdot"></div>
   <span id="statusText">Bağlanılıyor...</span>
   <span>·</span>
   <span id="lastScanText">—</span>
   <span>·</span>
-  <span id="coinCount">0 coin</span>
+  <span id="coinCount">—</span>
+  <span id="simStatusBar" style="display:none">·</span>
+  <div class="sdot sim-on" id="simDot" style="display:none"></div>
+  <span id="simStatusText" style="display:none;color:var(--purple)"></span>
 </div>
 
-<div class="summary">
-  <div class="card">
-    <div class="card-label">Taranan Coin</div>
-    <div class="card-value cv-blue" id="cTotal">—</div>
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- TAB 1: SCANNER                                            -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="tab-page active" id="page-scanner">
+  <div class="summary">
+    <div class="card"><div class="card-label">Taranan</div><div class="card-value cv-blue" id="cTotal">—</div></div>
+    <div class="card"><div class="card-label">4/4 TF BUY</div><div class="card-value cv-green" id="cAll">—</div></div>
+    <div class="card"><div class="card-label">2-3 TF BUY</div><div class="card-value cv-yellow" id="cPartial">—</div></div>
+    <div class="card"><div class="card-label">Hold Trend</div><div class="card-value" style="color:#52c27a" id="cHold">—</div></div>
+    <div class="card"><div class="card-label">Düşüş/Nötr</div><div class="card-value cv-red" id="cFail">—</div></div>
   </div>
-  <div class="card">
-    <div class="card-label">Tüm TF BUY</div>
-    <div class="card-value cv-green" id="cAll">—</div>
-  </div>
-  <div class="card">
-    <div class="card-label">2-3 TF BUY</div>
-    <div class="card-value cv-yellow" id="cPartial">—</div>
-  </div>
-  <div class="card">
-    <div class="card-label">BUY Hold</div>
-    <div class="card-value" style="color:#52c27a" id="cHold">—</div>
-  </div>
-  <div class="card">
-    <div class="card-label">SELL / Nötr</div>
-    <div class="card-value cv-red" id="cFail">—</div>
-  </div>
-</div>
 
-<div class="legend">
-  <div class="legend-item"><span class="sig sig-buy">BUY</span> Taze sinyal — trailing stop yeni kırıldı</div>
-  <div class="legend-item"><span class="sig sig-buy-hold">HOLD</span> Sinyal devam ediyor — yükseliş trendi</div>
-  <div class="legend-item"><span class="sig sig-sell">SELL</span> Taze satış sinyali</div>
-  <div class="legend-item"><span class="sig sig-sell-hold">S.HOLD</span> Düşüş trendinde</div>
-</div>
+  <div class="legend">
+    <div class="legend-item"><span class="sig sig-buy">BUY</span> Taze sinyal — stop yeni kırıldı</div>
+    <div class="legend-item"><span class="sig sig-buy-hold">HOLD</span> Yükseliş trendi devam</div>
+    <div class="legend-item"><span class="sig sig-sell">SELL</span> Taze satış sinyali</div>
+    <div class="legend-item"><span class="sig sig-sell-hold">S.HOLD</span> Düşüş trendi</div>
+  </div>
 
-<div id="mainContent">
-  <div class="loader" id="loader">
-    <div class="spinner"></div>
-    <div>İlk tarama başladı (~2 dakika)...</div>
+  <div id="scanContent">
+    <div class="loader" id="scanLoader">
+      <div class="spinner"></div>
+      <div>İlk tarama başladı (~2 dakika)...</div>
+    </div>
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- TAB 2: SİMÜLASYON                                         -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="tab-page" id="page-sim">
+
+  <!-- Controls -->
+  <div class="sim-controls">
+    <label>Coin başına bütçe (USD):</label>
+    <input type="number" class="sim-input" id="simBudget" value="1000" min="10" step="10"/>
+    <button class="btn" id="simStartBtn" onclick="simStart()">▶ Başlat</button>
+    <button class="btn btn-red" id="simStopBtn" onclick="simStop()" style="display:none">⏹ Durdur</button>
+    <button class="btn btn-gray" id="simResetBtn" onclick="simReset()">↺ Sıfırla</button>
+    <span class="sim-status-pill off" id="simPill">KAPALI</span>
+    <span style="font-size:11px;color:var(--muted)" id="simStartedAt"></span>
+  </div>
+
+  <!-- P&L Summary -->
+  <div class="summary" id="simSummary">
+    <div class="card"><div class="card-label">Toplam İşlem</div><div class="card-value cv-blue" id="sTrades">—</div></div>
+    <div class="card"><div class="card-label">Kazanan</div><div class="card-value cv-green" id="sWins">—</div></div>
+    <div class="card"><div class="card-label">Kaybeden</div><div class="card-value cv-red" id="sLosses">—</div></div>
+    <div class="card"><div class="card-label">Win Rate</div><div class="card-value cv-yellow" id="sWinRate">—</div></div>
+    <div class="card">
+      <div class="card-label">Gerçekleşen K/Z</div>
+      <div class="card-value" id="sRealPnl">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Açık K/Z</div>
+      <div class="card-value" id="sUnrealPnl">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Toplam K/Z</div>
+      <div class="card-value" id="sTotalPnl">—</div>
+      <div class="card-sub" id="sTotalPnlSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Açık Pozisyon</div>
+      <div class="card-value cv-purple" id="sOpenPos">—</div>
+    </div>
+  </div>
+
+  <!-- Open Positions -->
+  <div class="section">
+    <div class="sec-title">📂 Açık Pozisyonlar</div>
+    <div id="simPositions"><div class="empty">Henüz açık pozisyon yok.</div></div>
+
+    <div class="sec-title">📜 İşlem Geçmişi <span class="sec-sub">(en yeni üstte)</span></div>
+    <div id="simTrades"><div class="empty">Henüz kapalı işlem yok.</div></div>
+
+    <div style="padding:14px 0;text-align:center;font-size:11px;color:var(--muted)">
+      ⚠️ Bu simülasyon gerçek para içermez. Geçmiş performans gelecek sonuçları garanti etmez.
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ══════════════════════════════════════════════════ -->
 <div id="toast">
   <div class="toast-title" id="toastTitle"></div>
   <div class="toast-body"  id="toastBody"></div>
 </div>
 
 <script>
-  let notifEnabled = false;
-  let prevBuyAll = -1;
-  let nextScanTs = null;
+// ── State ──────────────────────────────────────────────────────
+let notifEnabled  = false;
+let prevBuyAll    = -1;
+let scanNextTs    = null;
+let simNextTs     = null;
+let currentTab    = 'scanner';
 
-  // ── Countdown ──────────────────────────────────────────────
-  setInterval(() => {
-    if (!nextScanTs) return;
-    const diff = Math.max(0, Math.floor(nextScanTs - Date.now() / 1000));
-    const m = String(Math.floor(diff / 60)).padStart(2,'0');
-    const s = String(diff % 60).padStart(2,'0');
-    document.getElementById('countdown').textContent = `${m}:${s}`;
-  }, 1000);
+// ── Tabs ───────────────────────────────────────────────────────
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('page-' + name).classList.add('active');
+}
 
-  // ── Notifications ──────────────────────────────────────────
-  async function toggleNotif() {
-    if (notifEnabled) {
-      notifEnabled = false;
-      document.getElementById('notifBtn').classList.remove('active');
-      toast('Bildirimler kapatıldı', '');
-      return;
-    }
-    if (!('Notification' in window)) { toast('Desteklenmiyor', ''); return; }
-    const p = await Notification.requestPermission();
-    if (p === 'granted') {
-      notifEnabled = true;
-      document.getElementById('notifBtn').classList.add('active');
-      toast('Bildirimler Açık', 'Yeni BUY sinyalinde uyarılacaksınız.');
-    } else {
-      toast('İzin Reddedildi', 'Tarayıcı ayarlarından izin verin.');
-    }
+// ── Countdown ──────────────────────────────────────────────────
+function fmtCountdown(ts) {
+  if (!ts) return '--:--';
+  const diff = Math.max(0, Math.floor(ts - Date.now() / 1000));
+  const m = String(Math.floor(diff / 60)).padStart(2, '0');
+  const s = String(diff % 60).padStart(2, '0');
+  return `${m}:${s}`;
+}
+setInterval(() => {
+  document.getElementById('scanCountdown').textContent = fmtCountdown(scanNextTs);
+}, 1000);
+
+// ── Notifications ──────────────────────────────────────────────
+async function toggleNotif() {
+  if (notifEnabled) {
+    notifEnabled = false;
+    document.getElementById('notifBtn').classList.remove('active');
+    toast('Bildirimler kapatıldı', '');
+    return;
   }
-
-  function sendNotif(title, body) {
-    if (notifEnabled && Notification.permission === 'granted')
-      new Notification(title, { body });
+  if (!('Notification' in window)) { toast('Desteklenmiyor', ''); return; }
+  const p = await Notification.requestPermission();
+  if (p === 'granted') {
+    notifEnabled = true;
+    document.getElementById('notifBtn').classList.add('active');
+    toast('Bildirimler Açık', 'Yeni sinyal geldiğinde uyarılacaksınız.');
+  } else {
+    toast('İzin Reddedildi', 'Tarayıcı ayarlarından izin verin.');
   }
+}
+function sendNotif(title, body) {
+  if (notifEnabled && Notification.permission === 'granted')
+    new Notification(title, { body });
+}
 
-  // ── Toast ──────────────────────────────────────────────────
-  function toast(title, body, ms = 4500) {
-    document.getElementById('toastTitle').textContent = title;
-    document.getElementById('toastBody').textContent  = body;
-    const el = document.getElementById('toast');
-    el.style.display = 'block';
-    clearTimeout(el._t);
-    el._t = setTimeout(() => el.style.display = 'none', ms);
-  }
+// ── Toast ──────────────────────────────────────────────────────
+function toast(title, body, ms = 4500) {
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastBody').textContent  = body;
+  const el = document.getElementById('toast');
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.display = 'none', ms);
+}
 
-  // ── Force scan ─────────────────────────────────────────────
-  async function forceScan() {
-    const btn = document.getElementById('scanBtn');
-    btn.disabled = true; btn.textContent = 'Taranıyor...';
-    await fetch('/api/scan/force', { method: 'POST' }).catch(() => {});
-    toast('Tarama Başladı', '~2 dakika sürebilir.');
-    setTimeout(() => { btn.disabled = false; btn.textContent = 'Şimdi Tara'; }, 12000);
-  }
+// ── Force scan ─────────────────────────────────────────────────
+async function forceScan() {
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true; btn.textContent = 'Taranıyor...';
+  await fetch('/api/scan/force', { method: 'POST' }).catch(() => {});
+  toast('Tarama Başladı', '~2 dakika sürebilir.');
+  setTimeout(() => { btn.disabled = false; btn.textContent = 'Şimdi Tara'; }, 12000);
+}
 
-  // ── Signal badge ───────────────────────────────────────────
-  function sigBadge(sig) {
-    const map = {
-      'BUY':       ['sig-buy',       'BUY'],
-      'BUY_HOLD':  ['sig-buy-hold',  'HOLD'],
-      'SELL':      ['sig-sell',      'SELL'],
-      'SELL_HOLD': ['sig-sell-hold', 'S.HOLD'],
-      'NEUTRAL':   ['sig-neutral',   'NÖTR'],
-      'NO_DATA':   ['sig-nodata',    'N/A'],
-    };
-    const [cls, label] = map[sig] || ['sig-nodata', sig];
-    return `<span class="sig ${cls}">${label}</span>`;
-  }
+// ── Signal badge ───────────────────────────────────────────────
+function sigBadge(sig) {
+  const map = {
+    'BUY':       ['sig-buy',       'BUY'],
+    'BUY_HOLD':  ['sig-buy-hold',  'HOLD'],
+    'SELL':      ['sig-sell',      'SELL'],
+    'SELL_HOLD': ['sig-sell-hold', 'S.HOLD'],
+    'NEUTRAL':   ['sig-neutral',   'NÖTR'],
+    'NO_DATA':   ['sig-nodata',    'N/A'],
+  };
+  const [cls, label] = map[sig] || ['sig-nodata', sig];
+  return `<span class="sig ${cls}">${label}</span>`;
+}
 
-  // ── Buy bar ────────────────────────────────────────────────
-  function buyBar(r) {
-    const tfs = ['15m','1h','2h','4h'];
-    return `<div class="buy-bar">` +
-      tfs.map(tf => {
-        const sig = r.timeframes?.[tf]?.signal || 'NO_DATA';
-        const cls = sig === 'BUY' ? 'fresh' : sig === 'BUY_HOLD' ? 'hold' : '';
-        return `<div class="buy-dot ${cls}" title="${tf}: ${sig}"></div>`;
-      }).join('') +
-    `<span style="font-size:11px;color:var(--muted);margin-left:4px">${r.buy_count} BUY</span>` +
+function buyBar(r) {
+  const tfs = ['15m','1h','2h','4h'];
+  return `<div class="buy-bar">` +
+    tfs.map(tf => {
+      const sig = r.timeframes?.[tf]?.signal || 'NO_DATA';
+      const cls = sig === 'BUY' ? 'fresh' : sig === 'BUY_HOLD' ? 'hold' : '';
+      return `<div class="buy-dot ${cls}" title="${tf}: ${sig}"></div>`;
+    }).join('') +
+    `<span style="font-size:10px;color:var(--muted);margin-left:4px">${r.buy_count} BUY</span>` +
     `</div>`;
+}
+
+// ── P&L class ──────────────────────────────────────────────────
+function pnlClass(v) { return v > 0 ? 'pnl-pos' : v < 0 ? 'pnl-neg' : 'pnl-neu'; }
+
+// ═══════════════════════════════════════════════════════════════
+// SCANNER RENDER
+// ═══════════════════════════════════════════════════════════════
+function renderScannerTable(rows) {
+  if (!rows.length) return `<div class="empty">Bu kategoride coin yok.</div>`;
+  const tfs = ['15m','1h','2h','4h'];
+  return `
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Coin</th><th>Fiyat</th>
+          ${tfs.map(tf => `<th>${tf.toUpperCase()}</th>`).join('')}
+          <th>Bar</th><th>Stop 15m</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map((r,i) => `
+            <tr>
+              <td style="color:var(--muted)">${i+1}</td>
+              <td><span class="coin-sym">${r.coin}</span></td>
+              <td><b>${r.price_fmt||'—'}</b></td>
+              ${tfs.map(tf => `<td>${sigBadge(r.timeframes?.[tf]?.signal||'NO_DATA')}</td>`).join('')}
+              <td>${buyBar(r)}</td>
+              <td style="font-size:11px;color:var(--muted)">${r.timeframes?.['15m']?.stop_fmt||'—'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderScanner(data) {
+  const results = data.results || [];
+  const allBuy  = results.filter(r => r.buy_count === 4);
+  const partial = results.filter(r => r.buy_count >= 2 && r.buy_count < 4);
+  const holdOnly= results.filter(r => r.buy_count === 0 && r.hold_count >= 2);
+  const rest    = results.filter(r => r.buy_count < 2 && !(r.buy_count === 0 && r.hold_count >= 2));
+
+  document.getElementById('cTotal').textContent   = results.length;
+  document.getElementById('cAll').textContent     = allBuy.length;
+  document.getElementById('cPartial').textContent = partial.length;
+  document.getElementById('cHold').textContent    = holdOnly.length;
+  document.getElementById('cFail').textContent    = rest.length;
+  document.getElementById('badge-buy').textContent = allBuy.length;
+
+  const sdot = document.getElementById('sdot');
+  sdot.className = 'sdot ' + (data.status === 'scanning' ? 'scanning' : 'done');
+  document.getElementById('statusText').textContent =
+    data.status === 'scanning' ? 'Taranıyor...' : 'Güncel';
+  if (data.last_scan)
+    document.getElementById('lastScanText').textContent =
+      'Son: ' + new Date(data.last_scan * 1000).toLocaleTimeString('tr-TR');
+  if (data.next_scan) scanNextTs = data.next_scan;
+  document.getElementById('coinCount').textContent = `${results.length} coin tarandı`;
+
+  if (prevBuyAll >= 0 && allBuy.length > prevBuyAll) {
+    const names = allBuy.slice(0, 3).map(r => r.coin).join(', ');
+    sendNotif('UT Bot — 4/4 TF BUY!', `${names}`);
+    toast('Yeni BUY Sinyali!', `${names} — 4 timeframe'de BUY!`, 8000);
+  }
+  prevBuyAll = allBuy.length;
+
+  document.getElementById('scanContent').innerHTML = `
+    <div class="section">
+      <div class="sec-title">✅ 4/4 TF BUY — Güçlü AL <span class="sec-sub">(15m+1H+2H+4H)</span></div>
+      ${allBuy.length ? renderScannerTable(allBuy)
+        : `<div class="card" style="padding:16px;text-align:center;color:var(--muted);margin-bottom:18px">Şu an 4/4 TF BUY yok.</div>`}
+
+      <div class="sec-title">⚡ 2-3/4 TF BUY — Kısmi AL</div>
+      ${renderScannerTable(partial)}
+
+      <div class="sec-title">📈 BUY Hold — Trend Devam</div>
+      ${renderScannerTable(holdOnly)}
+
+      <div class="sec-title">❌ Düşüş / Nötr</div>
+      ${renderScannerTable(rest)}
+
+      <div style="padding:14px 0;text-align:center;font-size:11px;color:var(--muted)">
+        ⚠️ Bu analiz yatırım tavsiyesi değildir. Max %1-2 risk kuralını uygulayın.
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SIMULATION RENDER
+// ═══════════════════════════════════════════════════════════════
+function renderSim(data) {
+  const s  = data.stats || {};
+  const running = data.running;
+
+  // Badge
+  document.getElementById('badge-sim').textContent = running ? 'CANLI' : 'KAPALI';
+  document.getElementById('badge-sim').className   = 'tab-badge' + (running ? '' : ' red');
+
+  // Pills & buttons
+  const pill = document.getElementById('simPill');
+  pill.textContent = running ? 'CANLI' : 'KAPALI';
+  pill.className   = 'sim-status-pill ' + (running ? 'on' : 'off');
+  document.getElementById('simStartBtn').style.display = running ? 'none' : '';
+  document.getElementById('simStopBtn').style.display  = running ? '' : 'none';
+  document.getElementById('simBudget').disabled = running;
+  if (data.started_at)
+    document.getElementById('simStartedAt').textContent = 'Başlangıç: ' + data.started_at;
+
+  // Status bar
+  const simBar = document.getElementById('simStatusBar');
+  const simDot = document.getElementById('simDot');
+  const simTxt = document.getElementById('simStatusText');
+  if (running) {
+    simBar.style.display = simDot.style.display = simTxt.style.display = '';
+    const nextCheck = data.next_check;
+    const diff = nextCheck ? Math.max(0, Math.floor(nextCheck - Date.now()/1000)) : 0;
+    const m = String(Math.floor(diff/60)).padStart(2,'0');
+    const sc= String(diff%60).padStart(2,'0');
+    simTxt.textContent = `Sim kontrol: ${m}:${sc}`;
+  } else {
+    simBar.style.display = simDot.style.display = simTxt.style.display = 'none';
   }
 
-  // ── Render table ───────────────────────────────────────────
-  function renderTable(rows) {
-    if (!rows.length) return `<p style="color:var(--muted);padding:18px">Bu kategoride coin yok.</p>`;
-    const tfs = ['15m','1h','2h','4h'];
-    return `
-      <div class="tbl-wrap">
+  // Summary cards
+  document.getElementById('sTrades').textContent  = s.total_trades ?? '—';
+  document.getElementById('sWins').textContent    = s.wins ?? '—';
+  document.getElementById('sLosses').textContent  = s.losses ?? '—';
+  document.getElementById('sWinRate').textContent = s.win_rate != null ? s.win_rate + '%' : '—';
+  document.getElementById('sOpenPos').textContent = s.open_positions ?? '—';
+
+  const rPnl = s.total_realized_pnl ?? 0;
+  const uPnl = s.total_unrealized_pnl ?? 0;
+  const tPnl = s.total_pnl ?? 0;
+
+  const rEl = document.getElementById('sRealPnl');
+  rEl.textContent = s.total_realized_fmt || '—';
+  rEl.className   = 'card-value ' + pnlClass(rPnl);
+
+  const uEl = document.getElementById('sUnrealPnl');
+  uEl.textContent = s.total_unrealized_fmt || '—';
+  uEl.className   = 'card-value ' + pnlClass(uPnl);
+
+  const tEl = document.getElementById('sTotalPnl');
+  tEl.textContent = s.total_pnl_fmt || '—';
+  tEl.className   = 'card-value ' + pnlClass(tPnl);
+  document.getElementById('sTotalPnlSub').textContent =
+    s.total_trades ? `En iyi: ${s.best_trade} (${s.best_pnl>0?'+':''}${s.best_pnl}$)` : '';
+
+  // Open positions table
+  const positions = data.positions || {};
+  const posCoins  = Object.keys(positions);
+  const posEl = document.getElementById('simPositions');
+  if (!posCoins.length) {
+    posEl.innerHTML = `<div class="empty">Açık pozisyon yok — BUY sinyali bekleniyor.</div>`;
+  } else {
+    posEl.innerHTML = `
+      <div class="tbl-wrap" style="margin-bottom:18px">
         <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Coin</th>
-              <th>Fiyat</th>
-              ${tfs.map(tf => `<th>${tf.toUpperCase()}</th>`).join('')}
-              <th>Sinyal Bar</th>
-              <th>Stop (15m)</th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th>Coin</th><th>Giriş Fiyatı</th><th>Anlık Fiyat</th>
+            <th>Miktar</th><th>Maliyet</th><th>Açık K/Z</th><th>Açık K/Z %</th>
+            <th>Giriş Zamanı</th>
+          </tr></thead>
           <tbody>
-            ${rows.map((r, i) => {
-              const tfsig = tfs.map(tf => {
-                const d = r.timeframes?.[tf] || {};
-                return `<td>${sigBadge(d.signal || 'NO_DATA')}</td>`;
-              }).join('');
-              const stop15 = r.timeframes?.['15m']?.stop_fmt || '—';
-              return `
-                <tr>
-                  <td style="color:var(--muted)">${i+1}</td>
-                  <td><span class="coin-sym">${r.coin}</span></td>
-                  <td><b>${r.price_fmt || '—'}</b></td>
-                  ${tfsig}
-                  <td>${buyBar(r)}</td>
-                  <td style="font-size:12px;color:var(--muted)">${stop15}</td>
-                </tr>`;
+            ${posCoins.map(coin => {
+              const p = positions[coin];
+              const cls = pnlClass(p.unrealized_pnl);
+              return `<tr>
+                <td><b>${coin}</b></td>
+                <td>${p.entry_price_fmt}</td>
+                <td><b>${p.current_price_fmt}</b></td>
+                <td style="font-size:11px;color:var(--muted)">${p.qty.toFixed(6)}</td>
+                <td>$${p.cost.toFixed(2)}</td>
+                <td class="${cls}">${p.unrealized_fmt}</td>
+                <td class="${cls}">${p.unrealized_pnl_pct > 0 ? '+' : ''}${p.unrealized_pnl_pct}%</td>
+                <td style="font-size:11px;color:var(--muted)">${p.entry_time}</td>
+              </tr>`;
             }).join('')}
           </tbody>
         </table>
       </div>`;
   }
 
-  // ── Main render ────────────────────────────────────────────
-  function render(data) {
-    const results = data.results || [];
-
-    const allBuy     = results.filter(r => r.buy_count === 4);
-    const partial    = results.filter(r => r.buy_count >= 2 && r.buy_count < 4);
-    const holdOnly   = results.filter(r => r.buy_count === 0 && r.hold_count >= 2);
-    const rest       = results.filter(r => r.buy_count < 2 && !(r.buy_count === 0 && r.hold_count >= 2));
-
-    document.getElementById('cTotal').textContent   = results.length;
-    document.getElementById('cAll').textContent     = allBuy.length;
-    document.getElementById('cPartial').textContent = partial.length;
-    document.getElementById('cHold').textContent    = holdOnly.length;
-    document.getElementById('cFail').textContent    = rest.length;
-
-    // Status
-    const sdot = document.getElementById('sdot');
-    sdot.className = 'sdot ' + (data.status === 'scanning' ? 'scanning' : data.status === 'done' ? 'done' : '');
-    document.getElementById('statusText').textContent =
-      data.status === 'scanning' ? 'Taranıyor...' :
-      data.status === 'done'     ? 'Güncel' : data.status;
-
-    if (data.last_scan)
-      document.getElementById('lastScanText').textContent =
-        'Son: ' + new Date(data.last_scan * 1000).toLocaleTimeString('tr-TR');
-    if (data.next_scan) nextScanTs = data.next_scan;
-    document.getElementById('coinCount').textContent = `${results.length} coin tarandı`;
-
-    // Notification on new signals
-    if (prevBuyAll >= 0 && allBuy.length > prevBuyAll) {
-      const names = allBuy.slice(0, 3).map(r => r.coin).join(', ');
-      sendNotif('UT Bot — Tüm TF BUY!', `${names} 4/4 timeframe'de BUY sinyali verdi`);
-      toast('Yeni BUY Sinyali!', `${names} — 4 timeframe'de de BUY!`, 8000);
-    }
-    prevBuyAll = allBuy.length;
-
-    document.getElementById('mainContent').innerHTML = `
-      <div class="section">
-        <div class="sec-title">
-          ✅ 4/4 Timeframe — Güçlü AL
-          <span class="sec-sub">(15m+1H+2H+4H hepsi BUY)</span>
-        </div>
-        ${allBuy.length === 0
-          ? `<div class="card" style="padding:18px;text-align:center;color:var(--muted);margin-bottom:20px">
-               Şu an 4 timeframe'de de BUY sinyali veren coin yok.
-             </div>`
-          : renderTable(allBuy)
-        }
-
-        <div class="sec-title">
-          ⚡ 2-3/4 Timeframe — Kısmi AL
-          <span class="sec-sub">(bazı TF'lerde BUY)</span>
-        </div>
-        ${renderTable(partial)}
-
-        <div class="sec-title">
-          📈 BUY Hold — Trend Devam
-          <span class="sec-sub">(taze sinyal yok, yükseliş trendi sürüyor)</span>
-        </div>
-        ${renderTable(holdOnly)}
-
-        <div class="sec-title">
-          ❌ Düşüş / Nötr
-        </div>
-        ${renderTable(rest)}
-
-        <div style="padding:16px;text-align:center;font-size:11px;color:var(--muted)">
-          ⚠️ Bu analiz yatırım tavsiyesi değildir. Pozisyon başına max %1-2 risk.
-        </div>
+  // Closed trades table
+  const trades = data.trades || [];
+  const trdEl  = document.getElementById('simTrades');
+  if (!trades.length) {
+    trdEl.innerHTML = `<div class="empty">Henüz kapalı işlem yok.</div>`;
+  } else {
+    trdEl.innerHTML = `
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Coin</th><th>Giriş</th><th>Çıkış</th>
+            <th>K/Z</th><th>K/Z %</th><th>Süre</th>
+            <th>Çıkış Sinyali</th><th>Çıkış Zamanı</th>
+          </tr></thead>
+          <tbody>
+            ${trades.map(t => {
+              const cls  = pnlClass(t.pnl);
+              const rowC = t.win ? 'trade-win' : 'trade-loss';
+              return `<tr class="${rowC}">
+                <td><b>${t.coin}</b></td>
+                <td>${t.entry_price_fmt}</td>
+                <td>${t.exit_price_fmt}</td>
+                <td class="${cls}">${t.pnl_fmt}</td>
+                <td class="${cls}">${t.pnl_pct > 0 ? '+' : ''}${t.pnl_pct}%</td>
+                <td style="color:var(--muted);font-size:11px">${t.duration}</td>
+                <td>${sigBadge(t.trigger_sig)}</td>
+                <td style="font-size:11px;color:var(--muted)">${t.exit_time}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
       </div>`;
   }
+}
 
-  // ── Poll ───────────────────────────────────────────────────
-  async function poll() {
-    try {
-      const res  = await fetch('/api/scan');
-      const data = await res.json();
-      document.getElementById('loader')?.remove();
-      if (data.results) render(data);
-      else {
-        document.getElementById('sdot').className = 'sdot scanning';
-        document.getElementById('statusText').textContent = 'İlk tarama devam ediyor...';
-      }
-    } catch(e) {
-      document.getElementById('statusText').textContent = 'Sunucuya bağlanılamıyor';
+// ═══════════════════════════════════════════════════════════════
+// Simulation controls
+// ═══════════════════════════════════════════════════════════════
+async function simStart() {
+  const budget = parseFloat(document.getElementById('simBudget').value) || 1000;
+  const res = await fetch('/api/sim/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ budget })
+  });
+  const d = await res.json();
+  toast('Simülasyon Başladı', `Her coin için $${budget} bütçe. 15dk'da bir kontrol.`);
+  pollSim();
+}
+
+async function simStop() {
+  await fetch('/api/sim/stop', { method: 'POST' });
+  toast('Simülasyon Durduruldu', 'Sonuçlar korundu. Sıfırlamak için ↺ kullanın.');
+  pollSim();
+}
+
+async function simReset() {
+  if (!confirm('Tüm simülasyon verisi silinecek. Emin misiniz?')) return;
+  await fetch('/api/sim/reset', { method: 'POST' });
+  toast('Simülasyon Sıfırlandı', '');
+  pollSim();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Poll loops
+// ═══════════════════════════════════════════════════════════════
+async function pollScanner() {
+  try {
+    const res  = await fetch('/api/scan');
+    const data = await res.json();
+    document.getElementById('scanLoader')?.remove();
+    if (data.results) renderScanner(data);
+    else {
+      document.getElementById('sdot').className = 'sdot scanning';
+      document.getElementById('statusText').textContent = 'İlk tarama devam ediyor...';
     }
+  } catch(e) {
+    document.getElementById('statusText').textContent = 'Sunucuya bağlanılamıyor';
   }
+}
 
-  poll();
-  setInterval(poll, 15000);
+async function pollSim() {
+  try {
+    const res  = await fetch('/api/sim/state');
+    const data = await res.json();
+    renderSim(data);
+  } catch(e) {}
+}
+
+// Initial load + intervals
+pollScanner();
+pollSim();
+setInterval(pollScanner, 15000);
+setInterval(pollSim,     10000);   // sim refreshes every 10s (live P&L)
 </script>
 </body>
 </html>

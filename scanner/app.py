@@ -1,9 +1,10 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 import urllib.request
 import json
 import threading
 import time
+from datetime import datetime, timezone
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -26,18 +27,32 @@ TOP100 = [
 ]
 
 COINS = list(dict.fromkeys([c for c in TOP100 if c not in EXCLUDE]))
-
-# UT Bot timeframes to check
 TIMEFRAMES = ['15m', '1h', '2h', '4h']
 
-scan_cache = {
-    'last_scan': None,
-    'next_scan': None,
-    'results': None,
-    'status': 'idle'
-}
-scan_lock = threading.Lock()
+# ─── Scanner state ────────────────────────────────────────────
+scan_cache = {'last_scan': None, 'next_scan': None, 'results': None, 'status': 'idle'}
+scan_lock  = threading.Lock()
 
+# ─── Simulation state ─────────────────────────────────────────
+SIM_BUDGET_PER_COIN = 1000.0   # USD per coin
+
+sim_state = {
+    'running':    False,
+    'started_at': None,
+    'budget':     SIM_BUDGET_PER_COIN,
+    'positions':  {},   # coin -> {entry_price, entry_time, qty, cost}
+    'trades':     [],   # list of closed trades
+    'signals':    {},   # coin -> last seen 15m signal
+    'last_check': None,
+    'next_check': None,
+    'total_realized_pnl': 0.0,
+}
+sim_lock = threading.Lock()
+
+
+# ═══════════════════════════════════════════════════════════════
+# Binance helpers
+# ═══════════════════════════════════════════════════════════════
 
 def fetch_klines(symbol, interval, limit=60):
     url = f"https://api.binance.com/api/v3/klines?symbol={symbol}USDT&interval={interval}&limit={limit}"
@@ -49,40 +64,46 @@ def fetch_klines(symbol, interval, limit=60):
         return None
 
 
+def fetch_price(symbol):
+    url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}USDT"
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            return float(json.loads(r.read())['price'])
+    except:
+        return None
+
+
+# ═══════════════════════════════════════════════════════════════
+# UT Bot core
+# ═══════════════════════════════════════════════════════════════
+
 def ut_bot(symbol, interval, atr_period=10, mult=1.5):
-    """
-    UT Bot Alert — ATR tabanlı trailing stop.
-    Fiyat trailing stop'u yukarı kırarsa BUY,
-    aşağı kırarsa SELL, değişim yoksa NEUTRAL döner.
-    """
     data = fetch_klines(symbol, interval, limit=60)
     if not data or len(data) < atr_period + 3:
-        return 'NO_DATA', None
+        return 'NO_DATA', None, None
 
     closes = [float(k[4]) for k in data]
     highs  = [float(k[2]) for k in data]
     lows   = [float(k[3]) for k in data]
 
-    # True Range
     tr = []
     for i in range(1, len(closes)):
         tr.append(max(
             highs[i] - lows[i],
-            abs(highs[i] - closes[i - 1]),
-            abs(lows[i]  - closes[i - 1])
+            abs(highs[i] - closes[i-1]),
+            abs(lows[i]  - closes[i-1])
         ))
 
-    # Smoothed ATR (RMA)
     atr_val = sum(tr[:atr_period]) / atr_period
     atr_vals = [atr_val]
     for i in range(atr_period, len(tr)):
         atr_val = (atr_val * (atr_period - 1) + tr[i]) / atr_period
         atr_vals.append(atr_val)
 
-    # Trailing stop + direction
     c = closes[atr_period:]
     if len(c) < 2:
-        return 'NO_DATA', None
+        return 'NO_DATA', None, None
 
     stop      = [c[0] - mult * atr_vals[0]]
     direction = [1]
@@ -97,20 +118,15 @@ def ut_bot(symbol, interval, atr_period=10, mult=1.5):
         else:
             new_stop = min(c[i] + mult * atr, prev_stop)
 
-        if c[i] > new_stop:
-            new_dir = 1
-        else:
-            new_dir = -1
-
-        # Direction changed → reset stop
+        new_dir = 1 if c[i] > new_stop else -1
         if new_dir != prev_dir:
             new_stop = c[i] - mult * atr if new_dir == 1 else c[i] + mult * atr
 
         stop.append(new_stop)
         direction.append(new_dir)
 
-    prev_dir = direction[-2]
-    curr_dir = direction[-1]
+    prev_dir  = direction[-2]
+    curr_dir  = direction[-1]
     curr_stop = stop[-1]
     curr_price = c[-1]
 
@@ -124,46 +140,48 @@ def ut_bot(symbol, interval, atr_period=10, mult=1.5):
     return signal, round(curr_stop, 8), round(curr_price, 8)
 
 
-def fmt_price(p):
-    if p is None:
-        return '—'
-    if p >= 1000:
-        return f"${p:,.2f}"
-    elif p >= 1:
-        return f"${p:.4f}"
-    elif p >= 0.001:
-        return f"${p:.6f}"
-    else:
-        return f"${p:.8f}"
+# ═══════════════════════════════════════════════════════════════
+# Helpers
+# ═══════════════════════════════════════════════════════════════
 
+def fmt_price(p):
+    if p is None: return '—'
+    if p >= 1000:       return f"${p:,.2f}"
+    elif p >= 1:        return f"${p:.4f}"
+    elif p >= 0.001:    return f"${p:.6f}"
+    else:               return f"${p:.8f}"
+
+
+def now_iso():
+    return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+
+def now_ts():
+    return time.time()
+
+
+# ═══════════════════════════════════════════════════════════════
+# Scanner loop
+# ═══════════════════════════════════════════════════════════════
 
 def run_scan():
     results = []
-
     for coin in COINS:
         tf_results = {}
         for tf in TIMEFRAMES:
-            res = ut_bot(coin, tf)
-            if res[0] == 'NO_DATA':
-                tf_results[tf] = {'signal': 'NO_DATA', 'stop': None, 'price': None}
-            else:
-                signal, stop, price = res
-                tf_results[tf] = {
-                    'signal': signal,
-                    'stop': stop,
-                    'stop_fmt': fmt_price(stop),
-                    'price': price,
-                    'price_fmt': fmt_price(price)
-                }
+            sig, stop, price = ut_bot(coin, tf)
+            tf_results[tf] = {
+                'signal':    sig,
+                'stop':      stop,
+                'stop_fmt':  fmt_price(stop),
+                'price':     price,
+                'price_fmt': fmt_price(price)
+            }
 
-        # Current price from shortest available timeframe
-        current_price = None
-        for tf in TIMEFRAMES:
-            if tf_results[tf].get('price'):
-                current_price = tf_results[tf]['price']
-                break
-
-        # Score: count timeframes with fresh BUY signal
+        current_price = next(
+            (tf_results[tf]['price'] for tf in TIMEFRAMES if tf_results[tf]['price']),
+            None
+        )
         buy_count  = sum(1 for tf in TIMEFRAMES if tf_results[tf]['signal'] == 'BUY')
         hold_count = sum(1 for tf in TIMEFRAMES if tf_results[tf]['signal'] == 'BUY_HOLD')
 
@@ -172,12 +190,11 @@ def run_scan():
             'price': current_price,
             'price_fmt': fmt_price(current_price),
             'timeframes': tf_results,
-            'buy_count': buy_count,
+            'buy_count':  buy_count,
             'hold_count': hold_count,
             'error': False
         })
 
-    # Sort: fresh BUY count desc, then hold count desc
     results.sort(key=lambda x: (-x['buy_count'], -x['hold_count'], x['coin']))
     return results
 
@@ -188,7 +205,7 @@ def background_scanner():
             scan_cache['status'] = 'scanning'
         try:
             results = run_scan()
-            now = time.time()
+            now = now_ts()
             with scan_lock:
                 scan_cache['results'] = results
                 scan_cache['last_scan'] = now
@@ -197,9 +214,116 @@ def background_scanner():
         except Exception as e:
             with scan_lock:
                 scan_cache['status'] = f'error: {e}'
-
         time.sleep(900)
 
+
+# ═══════════════════════════════════════════════════════════════
+# Simulation loop
+# ═══════════════════════════════════════════════════════════════
+
+def sim_tick():
+    """
+    Check 15m UT Bot signal for every coin.
+    BUY  → open position if none open
+    SELL / SELL_HOLD → close position if open
+    """
+    with sim_lock:
+        if not sim_state['running']:
+            return
+
+    new_signals  = {}
+    opened_now   = []
+    closed_now   = []
+
+    for coin in COINS:
+        sig, stop, price = ut_bot(coin, '15m')
+        if price is None:
+            continue
+
+        new_signals[coin] = sig
+
+        with sim_lock:
+            prev_sig = sim_state['signals'].get(coin)
+            budget   = sim_state['budget']
+            in_pos   = coin in sim_state['positions']
+
+        # ── Open long ──────────────────────────────────────────
+        if sig == 'BUY' and not in_pos:
+            qty  = budget / price
+            cost = budget
+            entry = {
+                'entry_price': price,
+                'entry_price_fmt': fmt_price(price),
+                'entry_time':  now_iso(),
+                'entry_ts':    now_ts(),
+                'qty':         qty,
+                'cost':        cost,
+                'stop':        stop,
+                'stop_fmt':    fmt_price(stop),
+            }
+            with sim_lock:
+                sim_state['positions'][coin] = entry
+            opened_now.append(coin)
+
+        # ── Close long ─────────────────────────────────────────
+        elif sig in ('SELL', 'SELL_HOLD') and in_pos:
+            with sim_lock:
+                pos = sim_state['positions'].pop(coin)
+
+            revenue   = pos['qty'] * price
+            pnl       = revenue - pos['cost']
+            pnl_pct   = (pnl / pos['cost']) * 100
+            duration_s = now_ts() - pos['entry_ts']
+            hours = int(duration_s // 3600)
+            mins  = int((duration_s % 3600) // 60)
+
+            trade = {
+                'coin':         coin,
+                'entry_price':  pos['entry_price'],
+                'entry_price_fmt': pos['entry_price_fmt'],
+                'exit_price':   price,
+                'exit_price_fmt': fmt_price(price),
+                'entry_time':   pos['entry_time'],
+                'exit_time':    now_iso(),
+                'qty':          pos['qty'],
+                'cost':         pos['cost'],
+                'revenue':      revenue,
+                'pnl':          round(pnl, 4),
+                'pnl_pct':      round(pnl_pct, 2),
+                'pnl_fmt':      f"{'+'if pnl>=0 else ''}{pnl:.2f}$",
+                'duration':     f"{hours}s {mins}dk",
+                'win':          pnl >= 0,
+                'trigger_sig':  sig,
+            }
+
+            with sim_lock:
+                sim_state['trades'].insert(0, trade)   # newest first
+                sim_state['total_realized_pnl'] = round(
+                    sim_state['total_realized_pnl'] + pnl, 4
+                )
+            closed_now.append(coin)
+
+    with sim_lock:
+        sim_state['signals'].update(new_signals)
+        sim_state['last_check'] = now_ts()
+        sim_state['next_check'] = now_ts() + 900
+
+
+def simulation_loop():
+    while True:
+        with sim_lock:
+            running = sim_state['running']
+        if running:
+            try:
+                sim_tick()
+            except Exception as e:
+                print(f"[SIM ERROR] {e}")
+        time.sleep(900)   # every 15 minutes
+
+
+# ═══════════════════════════════════════════════════════════════
+# Flask routes — Scanner
+# ═══════════════════════════════════════════════════════════════
 
 @app.route('/')
 def index():
@@ -214,13 +338,13 @@ def api_scan():
 
 
 @app.route('/api/scan/force', methods=['POST'])
-def api_force_scan():
-    def do_scan():
+def api_scan_force():
+    def do():
         with scan_lock:
             scan_cache['status'] = 'scanning'
         try:
             results = run_scan()
-            now = time.time()
+            now = now_ts()
             with scan_lock:
                 scan_cache['results'] = results
                 scan_cache['last_scan'] = now
@@ -229,14 +353,122 @@ def api_force_scan():
         except Exception as e:
             with scan_lock:
                 scan_cache['status'] = f'error: {e}'
-
-    t = threading.Thread(target=do_scan, daemon=True)
-    t.start()
+    threading.Thread(target=do, daemon=True).start()
     return jsonify({'status': 'scan started'})
 
 
+# ═══════════════════════════════════════════════════════════════
+# Flask routes — Simulation
+# ═══════════════════════════════════════════════════════════════
+
+@app.route('/api/sim/state')
+def api_sim_state():
+    with sim_lock:
+        state = dict(sim_state)
+
+    # Enrich open positions with current price + unrealized PnL
+    enriched_positions = {}
+    for coin, pos in state['positions'].items():
+        cur = fetch_price(coin)
+        if cur:
+            unreal = (cur - pos['entry_price']) * pos['qty']
+            unreal_pct = ((cur - pos['entry_price']) / pos['entry_price']) * 100
+        else:
+            cur, unreal, unreal_pct = pos['entry_price'], 0, 0
+
+        enriched_positions[coin] = {
+            **pos,
+            'current_price':     cur,
+            'current_price_fmt': fmt_price(cur),
+            'unrealized_pnl':    round(unreal, 4),
+            'unrealized_pnl_pct':round(unreal_pct, 2),
+            'unrealized_fmt':    f"{'+'if unreal>=0 else ''}{unreal:.2f}$",
+        }
+
+    total_unrealized = sum(p['unrealized_pnl'] for p in enriched_positions.values())
+    trades = state['trades']
+    wins   = [t for t in trades if t['win']]
+    losses = [t for t in trades if not t['win']]
+
+    return jsonify({
+        'running':     state['running'],
+        'started_at':  state['started_at'],
+        'budget':      state['budget'],
+        'last_check':  state['last_check'],
+        'next_check':  state['next_check'],
+        'positions':   enriched_positions,
+        'trades':      trades,
+        'signals':     state['signals'],
+        'stats': {
+            'total_trades':       len(trades),
+            'open_positions':     len(enriched_positions),
+            'wins':               len(wins),
+            'losses':             len(losses),
+            'win_rate':           round(len(wins)/len(trades)*100, 1) if trades else 0,
+            'total_realized_pnl': state['total_realized_pnl'],
+            'total_realized_fmt': f"{'+'if state['total_realized_pnl']>=0 else ''}{state['total_realized_pnl']:.2f}$",
+            'total_unrealized_pnl': round(total_unrealized, 4),
+            'total_unrealized_fmt': f"{'+'if total_unrealized>=0 else ''}{total_unrealized:.2f}$",
+            'total_pnl':          round(state['total_realized_pnl'] + total_unrealized, 4),
+            'total_pnl_fmt':      f"{'+'if (state['total_realized_pnl']+total_unrealized)>=0 else ''}{(state['total_realized_pnl']+total_unrealized):.2f}$",
+            'best_trade':         max(trades, key=lambda t: t['pnl'])['coin'] if trades else '—',
+            'best_pnl':           max(trades, key=lambda t: t['pnl'])['pnl'] if trades else 0,
+            'worst_trade':        min(trades, key=lambda t: t['pnl'])['coin'] if trades else '—',
+            'worst_pnl':          min(trades, key=lambda t: t['pnl'])['pnl'] if trades else 0,
+        }
+    })
+
+
+@app.route('/api/sim/start', methods=['POST'])
+def api_sim_start():
+    body = request.get_json(silent=True) or {}
+    budget = float(body.get('budget', SIM_BUDGET_PER_COIN))
+
+    with sim_lock:
+        if sim_state['running']:
+            return jsonify({'status': 'already running'})
+        sim_state['running']    = True
+        sim_state['started_at'] = now_iso()
+        sim_state['budget']     = budget
+
+    # First tick immediately in background
+    def first_tick():
+        try:
+            sim_tick()
+        except Exception as e:
+            print(f"[SIM FIRST TICK] {e}")
+    threading.Thread(target=first_tick, daemon=True).start()
+    return jsonify({'status': 'started', 'budget': budget})
+
+
+@app.route('/api/sim/stop', methods=['POST'])
+def api_sim_stop():
+    with sim_lock:
+        sim_state['running'] = False
+    return jsonify({'status': 'stopped'})
+
+
+@app.route('/api/sim/reset', methods=['POST'])
+def api_sim_reset():
+    with sim_lock:
+        sim_state['running']             = False
+        sim_state['started_at']          = None
+        sim_state['positions']           = {}
+        sim_state['trades']              = []
+        sim_state['signals']             = {}
+        sim_state['last_check']          = None
+        sim_state['next_check']          = None
+        sim_state['total_realized_pnl']  = 0.0
+        sim_state['budget']              = SIM_BUDGET_PER_COIN
+    return jsonify({'status': 'reset'})
+
+
+# ═══════════════════════════════════════════════════════════════
+# Start background threads
+# ═══════════════════════════════════════════════════════════════
+
 if __name__ == '__main__':
-    scanner_thread = threading.Thread(target=background_scanner, daemon=True)
-    scanner_thread.start()
-    print("Kripto UT Bot Tarayici: http://localhost:5050")
+    threading.Thread(target=background_scanner, daemon=True).start()
+    threading.Thread(target=simulation_loop,    daemon=True).start()
+    print("Kripto UT Bot Tarayici + Simulasyon: http://localhost:5050")
     app.run(host='0.0.0.0', port=5050, debug=False)
