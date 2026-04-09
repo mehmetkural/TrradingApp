@@ -4,7 +4,6 @@ import urllib.request
 import json
 import threading
 import time
-import os
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -28,6 +27,9 @@ TOP100 = [
 
 COINS = list(dict.fromkeys([c for c in TOP100 if c not in EXCLUDE]))
 
+# UT Bot timeframes to check
+TIMEFRAMES = ['15m', '1h', '2h', '4h']
+
 scan_cache = {
     'last_scan': None,
     'next_scan': None,
@@ -37,7 +39,7 @@ scan_cache = {
 scan_lock = threading.Lock()
 
 
-def fetch_klines(symbol, interval='1d', limit=35):
+def fetch_klines(symbol, interval, limit=60):
     url = f"https://api.binance.com/api/v3/klines?symbol={symbol}USDT&interval={interval}&limit={limit}"
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -47,80 +49,48 @@ def fetch_klines(symbol, interval='1d', limit=35):
         return None
 
 
-def ema(prices, period):
-    k = 2 / (period + 1)
-    e = prices[0]
-    result = [e]
-    for p in prices[1:]:
-        e = p * k + e * (1 - k)
-        result.append(e)
-    return result
-
-
-def calc_sma20(closes):
-    if len(closes) < 20:
-        return None
-    return sum(closes[-20:]) / 20
-
-
-def calc_macd(closes):
-    if len(closes) < 26:
-        return None, None
-    ema12 = ema(closes, 12)
-    ema26 = ema(closes, 26)
-    macd_line = [ema12[i] - ema26[i] for i in range(len(closes))]
-    signal = ema(macd_line[25:], 9)
-    macd_recent = macd_line[25:]
-    return macd_recent, signal
-
-
-def check_macd_crossover(macd_vals, signal_vals, lookback=3):
-    if len(macd_vals) < lookback + 1 or len(signal_vals) < lookback + 1:
-        return False
-    for i in range(-lookback, 0):
-        prev_i = i - 1
-        if macd_vals[prev_i] < signal_vals[prev_i] and macd_vals[i] > signal_vals[i]:
-            return True
-    return False
-
-
-def calc_ut_bot_2h(symbol):
-    data = fetch_klines(symbol, '2h', 60)
-    if not data or len(data) < 25:
+def ut_bot(symbol, interval, atr_period=10, mult=1.5):
+    """
+    UT Bot Alert — ATR tabanlı trailing stop.
+    Fiyat trailing stop'u yukarı kırarsa BUY,
+    aşağı kırarsa SELL, değişim yoksa NEUTRAL döner.
+    """
+    data = fetch_klines(symbol, interval, limit=60)
+    if not data or len(data) < atr_period + 3:
         return 'NO_DATA', None
 
     closes = [float(k[4]) for k in data]
     highs  = [float(k[2]) for k in data]
     lows   = [float(k[3]) for k in data]
 
-    atr_period = 10
-    mult = 1.5
-
+    # True Range
     tr = []
     for i in range(1, len(closes)):
         tr.append(max(
             highs[i] - lows[i],
-            abs(highs[i] - closes[i-1]),
-            abs(lows[i] - closes[i-1])
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i]  - closes[i - 1])
         ))
 
+    # Smoothed ATR (RMA)
     atr_val = sum(tr[:atr_period]) / atr_period
     atr_vals = [atr_val]
     for i in range(atr_period, len(tr)):
         atr_val = (atr_val * (atr_period - 1) + tr[i]) / atr_period
         atr_vals.append(atr_val)
 
+    # Trailing stop + direction
     c = closes[atr_period:]
     if len(c) < 2:
         return 'NO_DATA', None
 
-    stop = [c[0] - mult * atr_vals[0]]
+    stop      = [c[0] - mult * atr_vals[0]]
     direction = [1]
 
     for i in range(1, len(c)):
         prev_stop = stop[-1]
-        prev_dir = direction[-1]
-        atr = atr_vals[i]
+        prev_dir  = direction[-1]
+        atr       = atr_vals[i]
 
         if prev_dir == 1:
             new_stop = max(c[i] - mult * atr, prev_stop)
@@ -132,6 +102,7 @@ def calc_ut_bot_2h(symbol):
         else:
             new_dir = -1
 
+        # Direction changed → reset stop
         if new_dir != prev_dir:
             new_stop = c[i] - mult * atr if new_dir == 1 else c[i] + mult * atr
 
@@ -141,13 +112,16 @@ def calc_ut_bot_2h(symbol):
     prev_dir = direction[-2]
     curr_dir = direction[-1]
     curr_stop = stop[-1]
+    curr_price = c[-1]
 
     if prev_dir == -1 and curr_dir == 1:
-        return 'BUY', round(curr_stop, 8)
+        signal = 'BUY'
     elif prev_dir == 1 and curr_dir == -1:
-        return 'SELL', round(curr_stop, 8)
+        signal = 'SELL'
     else:
-        return 'NEUTRAL', round(curr_stop, 8)
+        signal = 'BUY_HOLD' if curr_dir == 1 else 'SELL_HOLD'
+
+    return signal, round(curr_stop, 8), round(curr_price, 8)
 
 
 def fmt_price(p):
@@ -165,79 +139,46 @@ def fmt_price(p):
 
 def run_scan():
     results = []
+
     for coin in COINS:
-        data = fetch_klines(coin, '1d', 35)
-        if not data:
-            results.append({
-                'coin': coin,
-                'price': None,
-                'sma20': None,
-                'macd_val': None,
-                'signal_line': None,
-                'ut_signal': 'NO_DATA',
-                'ut_stop': None,
-                'above_sma': False,
-                'macd_crossover': False,
-                'macd_bullish': False,
-                'score': 0,
-                'reasons': ['Binance\'de bulunamadı'],
-                'error': True
-            })
-            continue
+        tf_results = {}
+        for tf in TIMEFRAMES:
+            res = ut_bot(coin, tf)
+            if res[0] == 'NO_DATA':
+                tf_results[tf] = {'signal': 'NO_DATA', 'stop': None, 'price': None}
+            else:
+                signal, stop, price = res
+                tf_results[tf] = {
+                    'signal': signal,
+                    'stop': stop,
+                    'stop_fmt': fmt_price(stop),
+                    'price': price,
+                    'price_fmt': fmt_price(price)
+                }
 
-        closes = [float(k[4]) for k in data]
-        current_price = closes[-1]
-        sma20 = calc_sma20(closes)
+        # Current price from shortest available timeframe
+        current_price = None
+        for tf in TIMEFRAMES:
+            if tf_results[tf].get('price'):
+                current_price = tf_results[tf]['price']
+                break
 
-        if sma20 is None:
-            results.append({'coin': coin, 'price': current_price, 'score': 0,
-                            'reasons': ['Yetersiz veri'], 'error': True})
-            continue
-
-        above_sma = current_price > sma20
-        macd_vals, signal_vals = calc_macd(closes)
-
-        if macd_vals is None:
-            results.append({'coin': coin, 'price': current_price, 'score': 0,
-                            'reasons': ['MACD hesaplanamadı'], 'error': True})
-            continue
-
-        crossover = check_macd_crossover(macd_vals, signal_vals)
-        macd_now = macd_vals[-1]
-        sig_now = signal_vals[-1]
-        macd_bullish = macd_now > sig_now
-
-        ut_signal, ut_stop = calc_ut_bot_2h(coin)
-        score = sum([above_sma, crossover, ut_signal == 'BUY'])
-
-        reasons = []
-        if not above_sma:
-            reasons.append(f"Fiyat < SMA20")
-        if not crossover:
-            reasons.append("MACD bearish" if not macd_bullish else "Crossover > 3 mum")
-        if ut_signal != 'BUY':
-            reasons.append(f"UT Bot = {ut_signal}")
+        # Score: count timeframes with fresh BUY signal
+        buy_count  = sum(1 for tf in TIMEFRAMES if tf_results[tf]['signal'] == 'BUY')
+        hold_count = sum(1 for tf in TIMEFRAMES if tf_results[tf]['signal'] == 'BUY_HOLD')
 
         results.append({
             'coin': coin,
             'price': current_price,
             'price_fmt': fmt_price(current_price),
-            'sma20': sma20,
-            'sma20_fmt': fmt_price(sma20),
-            'macd_val': round(macd_now, 6),
-            'signal_line': round(sig_now, 6),
-            'macd_bullish': macd_bullish,
-            'ut_signal': ut_signal,
-            'ut_stop': ut_stop,
-            'ut_stop_fmt': fmt_price(ut_stop),
-            'above_sma': above_sma,
-            'macd_crossover': crossover,
-            'score': score,
-            'reasons': reasons,
+            'timeframes': tf_results,
+            'buy_count': buy_count,
+            'hold_count': hold_count,
             'error': False
         })
 
-    results.sort(key=lambda x: (-x.get('score', 0), x['coin']))
+    # Sort: fresh BUY count desc, then hold count desc
+    results.sort(key=lambda x: (-x['buy_count'], -x['hold_count'], x['coin']))
     return results
 
 
@@ -245,20 +186,19 @@ def background_scanner():
     while True:
         with scan_lock:
             scan_cache['status'] = 'scanning'
-
         try:
             results = run_scan()
             now = time.time()
             with scan_lock:
                 scan_cache['results'] = results
                 scan_cache['last_scan'] = now
-                scan_cache['next_scan'] = now + 900  # 15 min
+                scan_cache['next_scan'] = now + 900
                 scan_cache['status'] = 'done'
         except Exception as e:
             with scan_lock:
                 scan_cache['status'] = f'error: {e}'
 
-        time.sleep(900)  # 15 minutes
+        time.sleep(900)
 
 
 @app.route('/')
@@ -298,5 +238,5 @@ def api_force_scan():
 if __name__ == '__main__':
     scanner_thread = threading.Thread(target=background_scanner, daemon=True)
     scanner_thread.start()
-    print("🚀 Kripto Tarayıcı başlatılıyor: http://localhost:5050")
+    print("Kripto UT Bot Tarayici: http://localhost:5050")
     app.run(host='0.0.0.0', port=5050, debug=False)
