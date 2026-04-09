@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UT Bot Tarayıcı</title>
+  <style>
+    :root {
+      --bg:#0d1117;--card:#161b22;--border:#21262d;--text:#e6edf3;--muted:#8b949e;
+      --green:#3fb950;--green-bg:#122116;--yellow:#d29922;--yellow-bg:#1f1700;
+      --red:#f85149;--red-bg:#1f0d0d;--blue:#58a6ff;--purple:#bc8cff;--radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px}
+
+    header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+    .logo{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+    .pulse{width:8px;height:8px;border-radius:50%;background:var(--green);animation:glow 2s infinite}
+    @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(63,185,80,.5)}50%{box-shadow:0 0 0 5px rgba(63,185,80,0)}}
+    .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .timer-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;text-align:center}
+    .timer-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+    .timer-value{font-size:18px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+    .btn{background:#238636;color:#fff;border:none;border-radius:var(--radius);padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .2s}
+    .btn:hover{opacity:.85}.btn:disabled{opacity:.4;cursor:not-allowed}
+    .btn-red{background:#b91c1c}.btn-blue{background:#1d4ed8}.btn-gray{background:#30363d}
+    .notif-btn{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:6px 10px;font-size:14px;cursor:pointer}
+    .notif-btn.active{border-color:var(--green);color:var(--green)}
+
+    .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--card);padding:0 24px}
+    .tab{padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px}
+    .tab:hover{color:var(--text)}.tab.active{color:var(--text);border-bottom-color:var(--blue)}
+    .tab-badge{background:var(--green-bg);color:var(--green);border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700}
+    .tab-badge.red{background:var(--red-bg);color:var(--red)}
+
+    .status-bar{padding:7px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+    .sdot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0}
+    .sdot.scanning{background:var(--yellow);animation:glow 1s infinite}
+    .sdot.done{background:var(--green)}.sdot.sim-on{background:var(--purple);animation:glow 1.5s infinite}
+
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:16px 24px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px}
+    .card-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+    .card-value{font-size:24px;font-weight:700}.card-sub{font-size:11px;color:var(--muted);margin-top:3px}
+    .cv-green{color:var(--green)}.cv-yellow{color:var(--yellow)}.cv-blue{color:var(--blue)}
+    .cv-red{color:var(--red)}.cv-purple{color:var(--purple)}.cv-muted{color:var(--muted)}
+
+    .section{padding:0 24px 24px}
+    .sec-title{font-size:14px;font-weight:700;margin-bottom:10px;padding-top:6px;display:flex;align-items:center;gap:7px}
+    .sec-sub{font-size:11px;font-weight:400;color:var(--muted)}
+
+    .tbl-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:22px}
+    table{width:100%;border-collapse:collapse}
+    thead th{background:#1c2128;padding:8px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+    tbody tr{border-top:1px solid var(--border);transition:background .1s}
+    tbody tr:hover{background:#1c2128}
+    td{padding:8px 12px;white-space:nowrap;vertical-align:middle}
+    .coin-sym{font-weight:700;font-size:14px}
+
+    .sig{display:inline-block;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;letter-spacing:.3px}
+    .sig-buy{background:var(--green-bg);color:var(--green);border:1px solid #2a4a2a}
+    .sig-buy-hold{background:#0f2a1a;color:#52c27a;border:1px solid #1a3a2a}
+    .sig-sell{background:var(--red-bg);color:var(--red);border:1px solid #4a1a1a}
+    .sig-sell-hold{background:#1f1010;color:#c26060;border:1px solid #3a1a1a}
+    .sig-neutral{background:#1c2128;color:var(--muted);border:1px solid var(--border)}
+    .sig-nodata{background:#1c2128;color:#555;border:1px solid var(--border)}
+
+    .buy-bar{display:flex;gap:3px;align-items:center}
+    .buy-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+    .buy-dot.fresh{background:var(--green)}.buy-dot.hold{background:#2a5c3a}
+
+    .pnl-pos{color:var(--green);font-weight:700}
+    .pnl-neg{color:var(--red);font-weight:700}
+    .pnl-neu{color:var(--muted)}
+
+    .sim-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--card)}
+    .sim-controls label{font-size:12px;color:var(--muted)}
+    .sim-input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:13px;width:110px}
+    .sim-status-pill{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700}
+    .sim-status-pill.on{background:#1a2e1a;color:var(--green);border:1px solid #2a4a2a}
+    .sim-status-pill.off{background:#1c2128;color:var(--muted);border:1px solid var(--border)}
+
+    .trade-win{border-left:3px solid var(--green)}.trade-loss{border-left:3px solid var(--red)}
+
+    .progress-bar-wrap{background:var(--border);border-radius:4px;height:5px;margin:12px 24px;overflow:hidden}
+    .progress-bar{height:100%;background:var(--blue);transition:width .3s;border-radius:4px}
+
+    .loader{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:50px;color:var(--muted)}
+    .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .75s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty{padding:28px;text-align:center;color:var(--muted);font-size:13px}
+
+    #toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--green);border-radius:var(--radius);padding:12px 15px;max-width:290px;z-index:9999;display:none;animation:slideIn .2s ease}
+    @keyframes slideIn{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+    .toast-title{font-weight:700;color:var(--green);margin-bottom:2px;font-size:13px}
+    .toast-body{font-size:11px;color:var(--muted)}
+
+    .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:0 24px 14px}
+    .legend-item{display:flex;align-items:center;gap:4px}
+
+    .tab-page{display:none}.tab-page.active{display:block}
+
+    .scan-progress{font-size:12px;color:var(--muted);padding:4px 24px;text-align:center}
+
+    @media(max-width:600px){
+      header,.summary,.section,.legend,.tabs,.sim-controls,.status-bar{padding-left:12px;padding-right:12px}
+      .tab{padding:10px 12px}
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="pulse"></div>
+    UT Bot Tarayıcı
+    <span style="font-size:10px;color:var(--muted);font-weight:400">15m·1H·2H·4H</span>
+  </div>
+  <div class="header-right">
+    <div class="timer-box">
+      <div class="timer-label">Sonraki Tarama</div>
+      <div class="timer-value" id="countdown">--:--</div>
+    </div>
+    <button class="notif-btn" id="notifBtn" onclick="toggleNotif()" title="Bildirimler">🔔</button>
+    <button class="btn" id="scanBtn" onclick="startScan()">Şimdi Tara</button>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" id="tab-scanner" onclick="switchTab('scanner')">
+    📊 Tarayıcı <span class="tab-badge" id="badge-buy">0</span>
+  </div>
+  <div class="tab" id="tab-sim" onclick="switchTab('sim')">
+    🤖 Simülasyon <span class="tab-badge red" id="badge-sim">KAPALI</span>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="sdot" id="sdot"></div>
+  <span id="statusText">Hazırlanıyor...</span>
+  <span>·</span><span id="lastScanText">—</span>
+  <span>·</span><span id="coinCount">—</span>
+  <span id="simBar" style="display:none">·</span>
+  <div class="sdot sim-on" id="simDot" style="display:none"></div>
+  <span id="simBarText" style="display:none;color:var(--purple)"></span>
+</div>
+
+<!-- Progress bar (scan) -->
+<div class="progress-bar-wrap" id="progressWrap" style="display:none">
+  <div class="progress-bar" id="progressBar" style="width:0%"></div>
+</div>
+<div class="scan-progress" id="scanProgress" style="display:none"></div>
+
+<!-- ═══ TAB 1: SCANNER ═══════════════════════════════════════ -->
+<div class="tab-page active" id="page-scanner">
+  <div class="summary">
+    <div class="card"><div class="card-label">Taranan</div><div class="card-value cv-blue" id="cTotal">—</div></div>
+    <div class="card"><div class="card-label">4/4 TF BUY</div><div class="card-value cv-green" id="cAll">—</div></div>
+    <div class="card"><div class="card-label">2-3 TF BUY</div><div class="card-value cv-yellow" id="cPartial">—</div></div>
+    <div class="card"><div class="card-label">Hold Trend</div><div class="card-value" style="color:#52c27a" id="cHold">—</div></div>
+    <div class="card"><div class="card-label">Düşüş/Nötr</div><div class="card-value cv-red" id="cFail">—</div></div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><span class="sig sig-buy">BUY</span> Taze sinyal</div>
+    <div class="legend-item"><span class="sig sig-buy-hold">HOLD</span> Yükseliş trendi</div>
+    <div class="legend-item"><span class="sig sig-sell">SELL</span> Taze satış</div>
+    <div class="legend-item"><span class="sig sig-sell-hold">S.HOLD</span> Düşüş trendi</div>
+  </div>
+  <div id="scanContent">
+    <div class="loader"><div class="spinner"></div><div>Taramayı başlatmak için "Şimdi Tara" butonuna basın.</div></div>
+  </div>
+</div>
+
+<!-- ═══ TAB 2: SİMÜLASYON ════════════════════════════════════ -->
+<div class="tab-page" id="page-sim">
+  <div class="sim-controls">
+    <label>Coin başına bütçe (USD):</label>
+    <input type="number" class="sim-input" id="simBudget" value="1000" min="10" step="10"/>
+    <button class="btn" id="simStartBtn" onclick="simStart()">▶ Başlat</button>
+    <button class="btn btn-red" id="simStopBtn" onclick="simStop()" style="display:none">⏹ Durdur</button>
+    <button class="btn btn-gray" onclick="simReset()">↺ Sıfırla</button>
+    <span class="sim-status-pill off" id="simPill">KAPALI</span>
+    <span style="font-size:11px;color:var(--muted)" id="simStartedAt"></span>
+  </div>
+
+  <div class="summary">
+    <div class="card"><div class="card-label">Toplam İşlem</div><div class="card-value cv-blue" id="sTrades">0</div></div>
+    <div class="card"><div class="card-label">Kazanan</div><div class="card-value cv-green" id="sWins">0</div></div>
+    <div class="card"><div class="card-label">Kaybeden</div><div class="card-value cv-red" id="sLosses">0</div></div>
+    <div class="card"><div class="card-label">Win Rate</div><div class="card-value cv-yellow" id="sWinRate">—</div></div>
+    <div class="card"><div class="card-label">Gerçekleşen K/Z</div><div class="card-value" id="sRealPnl">$0.00</div></div>
+    <div class="card"><div class="card-label">Açık K/Z</div><div class="card-value" id="sUnrealPnl">$0.00</div></div>
+    <div class="card"><div class="card-label">Toplam K/Z</div><div class="card-value" id="sTotalPnl">$0.00</div><div class="card-sub" id="sTotalSub"></div></div>
+    <div class="card"><div class="card-label">Açık Pozisyon</div><div class="card-value cv-purple" id="sOpenPos">0</div></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">📂 Açık Pozisyonlar</div>
+    <div id="simPositions"><div class="empty">Henüz açık pozisyon yok — BUY sinyali bekleniyor.</div></div>
+
+    <div class="sec-title">📜 İşlem Geçmişi <span class="sec-sub">(en yeni üstte)</span></div>
+    <div id="simTrades"><div class="empty">Henüz kapalı işlem yok.</div></div>
+
+    <div style="padding:14px 0;text-align:center;font-size:11px;color:var(--muted)">
+      ⚠️ Simülasyon yalnızca sekme açıkken çalışır. Gerçek para içermez.
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"><div class="toast-title" id="toastTitle"></div><div class="toast-body" id="toastBody"></div></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════
+const BINANCE = 'https://api.binance.com/api/v3';
+const SCAN_INTERVAL_MS = 15 * 60 * 1000; // 15 min
+const SIM_REFRESH_MS   = 15 * 1000;      // 15s live P&L
+const CONCURRENCY      = 8;              // parallel Binance requests
+const ATR_PERIOD       = 10;
+const ATR_MULT         = 1.5;
+const TIMEFRAMES       = ['15m','1h','2h','4h'];
+
+const EXCLUDE = new Set([
+  'USDT','USDC','DAI','USDe','PYUSD','USD1','USDG','USDD','RLUSD','TUSD',
+  'EURC','FDUSD','XAUt','PAXG','LEO','OKB','KCS','GT','BGB','CC','M',
+  'WLFI','STABLE','SIREN','NIGHT','EDGE','VVV','ASTER','U','PUMP'
+]);
+
+const TOP100 = [
+  'BTC','ETH','XRP','BNB','SOL','TRX','DOGE','HYPE','ADA','BCH',
+  'LINK','XMR','ZEC','XLM','LTC','AVAX','HBAR','SUI','TAO','SHIB',
+  'TON','CRO','DOT','UNI','NEAR','PEPE','AAVE','ICP','ETC','ONDO',
+  'RENDER','ALGO','POL','ATOM','QNT','KAS','WLD','ENA','FIL','TRUMP',
+  'APT','FLR','ZRO','ARB','VET','JUP','FET','BONK','CAKE','DASH',
+  'VIRTUAL','PENGU','STX','CHZ','XTZ','SEI','CRV','GNO','MNT',
+  'MORPHO','DEXE','JST','NEXO','SUN','DCR','ETHFI','SKY','MON'
+];
+
+const COINS = [...new Set(TOP100.filter(c => !EXCLUDE.has(c)))];
+
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
+let scanResults   = null;
+let scanning      = false;
+let nextScanTs    = null;
+let notifEnabled  = false;
+let prevBuyAll    = -1;
+let simTimer      = null;
+let currentTab    = 'scanner';
+
+// Simulation (persisted to localStorage)
+const SIM_KEY = 'utbot_sim_v2';
+let sim = loadSim();
+
+function defaultSim() {
+  return {
+    running: false, startedAt: null, budget: 1000,
+    positions: {}, trades: [], prevSignals: {}, totalRealizedPnl: 0
+  };
+}
+function loadSim() {
+  try { const s = localStorage.getItem(SIM_KEY); return s ? JSON.parse(s) : defaultSim(); }
+  catch { return defaultSim(); }
+}
+function saveSim() {
+  try { localStorage.setItem(SIM_KEY, JSON.stringify(sim)); } catch {}
+}
+
+// ══════════════════════════════════════════════════════════════
+// BINANCE API
+// ══════════════════════════════════════════════════════════════
+async function fetchKlines(symbol, interval, limit = 60) {
+  const res = await fetch(`${BINANCE}/klines?symbol=${symbol}USDT&interval=${interval}&limit=${limit}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function fetchPrice(symbol) {
+  try {
+    const res = await fetch(`${BINANCE}/ticker/price?symbol=${symbol}USDT`);
+    const d = await res.json();
+    return parseFloat(d.price);
+  } catch { return null; }
+}
+
+// Concurrency-limited pool
+async function pool(tasks, concurrency) {
+  const results = new Array(tasks.length);
+  let idx = 0;
+  async function worker() {
+    while (idx < tasks.length) {
+      const i = idx++;
+      try { results[i] = await tasks[i](); }
+      catch { results[i] = null; }
+    }
+  }
+  await Promise.all(Array.from({length: concurrency}, worker));
+  return results;
+}
+
+// ══════════════════════════════════════════════════════════════
+// UT BOT
+// ══════════════════════════════════════════════════════════════
+function utBot(klines) {
+  if (!klines || klines.length < ATR_PERIOD + 3) return { signal:'NO_DATA', stop:null, price:null };
+
+  const closes = klines.map(k => parseFloat(k[4]));
+  const highs  = klines.map(k => parseFloat(k[2]));
+  const lows   = klines.map(k => parseFloat(k[3]));
+
+  const tr = [];
+  for (let i = 1; i < closes.length; i++) {
+    tr.push(Math.max(
+      highs[i] - lows[i],
+      Math.abs(highs[i] - closes[i-1]),
+      Math.abs(lows[i]  - closes[i-1])
+    ));
+  }
+
+  let atrVal = tr.slice(0, ATR_PERIOD).reduce((a,b) => a+b, 0) / ATR_PERIOD;
+  const atrVals = [atrVal];
+  for (let i = ATR_PERIOD; i < tr.length; i++) {
+    atrVal = (atrVal * (ATR_PERIOD - 1) + tr[i]) / ATR_PERIOD;
+    atrVals.push(atrVal);
+  }
+
+  const c = closes.slice(ATR_PERIOD);
+  if (c.length < 2) return { signal:'NO_DATA', stop:null, price:null };
+
+  const stop = [c[0] - ATR_MULT * atrVals[0]];
+  const dir  = [1];
+
+  for (let i = 1; i < c.length; i++) {
+    const ps = stop[stop.length-1];
+    const pd = dir[dir.length-1];
+    const atr = atrVals[i];
+    let ns = pd === 1 ? Math.max(c[i] - ATR_MULT*atr, ps) : Math.min(c[i] + ATR_MULT*atr, ps);
+    const nd = c[i] > ns ? 1 : -1;
+    if (nd !== pd) ns = nd === 1 ? c[i] - ATR_MULT*atr : c[i] + ATR_MULT*atr;
+    stop.push(ns); dir.push(nd);
+  }
+
+  const pd = dir[dir.length-2], cd = dir[dir.length-1];
+  const signal = pd===-1&&cd===1 ? 'BUY' : pd===1&&cd===-1 ? 'SELL' : cd===1 ? 'BUY_HOLD' : 'SELL_HOLD';
+  return { signal, stop: stop[stop.length-1], price: c[c.length-1] };
+}
+
+// ══════════════════════════════════════════════════════════════
+// SCANNER
+// ══════════════════════════════════════════════════════════════
+async function startScan() {
+  if (scanning) return;
+  scanning = true;
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('scanBtn').textContent = 'Taranıyor...';
+  document.getElementById('sdot').className = 'sdot scanning';
+  document.getElementById('statusText').textContent = 'Taranıyor...';
+  document.getElementById('progressWrap').style.display = '';
+  document.getElementById('scanProgress').style.display = '';
+
+  const results = [];
+  let done = 0;
+
+  // Build all tasks (coin × timeframe)
+  const coinData = {};
+  COINS.forEach(c => { coinData[c] = {}; });
+
+  const tasks = [];
+  for (const coin of COINS) {
+    for (const tf of TIMEFRAMES) {
+      tasks.push(async () => {
+        const klines = await fetchKlines(coin, tf, 60);
+        coinData[coin][tf] = utBot(klines);
+        done++;
+        const pct = Math.round(done / tasks.length * 100);
+        document.getElementById('progressBar').style.width = pct + '%';
+        const c = Math.round(done / TIMEFRAMES.length);
+        document.getElementById('scanProgress').textContent =
+          `${c} / ${COINS.length} coin tarandı...`;
+      });
+    }
+  }
+
+  await pool(tasks, CONCURRENCY);
+
+  for (const coin of COINS) {
+    const tfs = coinData[coin];
+    const price = TIMEFRAMES.map(tf => tfs[tf]?.price).find(p => p != null);
+    const buyCount  = TIMEFRAMES.filter(tf => tfs[tf]?.signal === 'BUY').length;
+    const holdCount = TIMEFRAMES.filter(tf => tfs[tf]?.signal === 'BUY_HOLD').length;
+    results.push({ coin, price, timeframes: tfs, buyCount, holdCount });
+  }
+
+  results.sort((a,b) => b.buyCount - a.buyCount || b.holdCount - a.holdCount);
+  scanResults = results;
+
+  const now = Date.now();
+  nextScanTs = now/1000 + 900;
+
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('scanProgress').style.display = 'none';
+  document.getElementById('sdot').className = 'sdot done';
+  document.getElementById('statusText').textContent = 'Güncel';
+  document.getElementById('lastScanText').textContent = 'Son: ' + new Date(now).toLocaleTimeString('tr-TR');
+  document.getElementById('coinCount').textContent = `${results.length} coin`;
+  document.getElementById('scanBtn').disabled = false;
+  document.getElementById('scanBtn').textContent = 'Şimdi Tara';
+  scanning = false;
+
+  renderScanner();
+
+  // Trigger sim check after scan
+  if (sim.running) simTick();
+}
+
+// ══════════════════════════════════════════════════════════════
+// SCANNER RENDER
+// ══════════════════════════════════════════════════════════════
+function fmtP(p) {
+  if (p==null) return '—';
+  if (p>=1000) return '$'+p.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if (p>=1)    return '$'+p.toFixed(4);
+  if (p>=0.001)return '$'+p.toFixed(6);
+  return '$'+p.toFixed(8);
+}
+
+function sigBadge(sig) {
+  const map = {
+    BUY:['sig-buy','BUY'],BUY_HOLD:['sig-buy-hold','HOLD'],
+    SELL:['sig-sell','SELL'],SELL_HOLD:['sig-sell-hold','S.HOLD'],
+    NEUTRAL:['sig-neutral','NÖTR'],NO_DATA:['sig-nodata','N/A']
+  };
+  const [cls,lbl] = map[sig]||['sig-nodata',sig];
+  return `<span class="sig ${cls}">${lbl}</span>`;
+}
+
+function buyBar(r) {
+  return `<div class="buy-bar">` +
+    TIMEFRAMES.map(tf => {
+      const s = r.timeframes[tf]?.signal||'NO_DATA';
+      const c = s==='BUY'?'fresh':s==='BUY_HOLD'?'hold':'';
+      return `<div class="buy-dot ${c}" title="${tf}: ${s}"></div>`;
+    }).join('') +
+    `<span style="font-size:10px;color:var(--muted);margin-left:4px">${r.buyCount} BUY</span></div>`;
+}
+
+function scanTable(rows) {
+  if (!rows.length) return `<div class="empty">Bu kategoride coin yok.</div>`;
+  return `<div class="tbl-wrap"><table>
+    <thead><tr><th>#</th><th>Coin</th><th>Fiyat</th>${TIMEFRAMES.map(tf=>`<th>${tf.toUpperCase()}</th>`).join('')}<th>Bar</th><th>Stop 15m</th></tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><span class="coin-sym">${r.coin}</span></td>
+      <td><b>${fmtP(r.price)}</b></td>
+      ${TIMEFRAMES.map(tf=>`<td>${sigBadge(r.timeframes[tf]?.signal||'NO_DATA')}</td>`).join('')}
+      <td>${buyBar(r)}</td>
+      <td style="font-size:11px;color:var(--muted)">${fmtP(r.timeframes['15m']?.stop)}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function renderScanner() {
+  if (!scanResults) return;
+  const allBuy  = scanResults.filter(r => r.buyCount === 4);
+  const partial = scanResults.filter(r => r.buyCount >= 2 && r.buyCount < 4);
+  const holdOnly= scanResults.filter(r => r.buyCount === 0 && r.holdCount >= 2);
+  const rest    = scanResults.filter(r => r.buyCount < 2 && !(r.buyCount===0&&r.holdCount>=2));
+
+  document.getElementById('cTotal').textContent   = scanResults.length;
+  document.getElementById('cAll').textContent     = allBuy.length;
+  document.getElementById('cPartial').textContent = partial.length;
+  document.getElementById('cHold').textContent    = holdOnly.length;
+  document.getElementById('cFail').textContent    = rest.length;
+  document.getElementById('badge-buy').textContent = allBuy.length;
+
+  if (prevBuyAll >= 0 && allBuy.length > prevBuyAll) {
+    const names = allBuy.slice(0,3).map(r=>r.coin).join(', ');
+    sendNotif('UT Bot — 4/4 TF BUY!', names);
+    toast('Yeni BUY!', `${names} — 4 TF'de BUY!`, 8000);
+  }
+  prevBuyAll = allBuy.length;
+
+  document.getElementById('scanContent').innerHTML = `<div class="section">
+    <div class="sec-title">✅ 4/4 TF BUY — Güçlü AL <span class="sec-sub">(15m+1H+2H+4H)</span></div>
+    ${allBuy.length ? scanTable(allBuy) : `<div class="card" style="padding:16px;text-align:center;color:var(--muted);margin-bottom:18px">Şu an 4/4 TF BUY yok.</div>`}
+    <div class="sec-title">⚡ 2-3/4 TF BUY</div>${scanTable(partial)}
+    <div class="sec-title">📈 BUY Hold — Trend Devam</div>${scanTable(holdOnly)}
+    <div class="sec-title">❌ Düşüş / Nötr</div>${scanTable(rest)}
+    <div style="padding:14px 0;text-align:center;font-size:11px;color:var(--muted)">⚠️ Yatırım tavsiyesi değildir. Max %1-2 risk.</div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SIMULATION ENGINE
+// ══════════════════════════════════════════════════════════════
+function nowISO() { return new Date().toLocaleString('tr-TR',{timeZone:'UTC'}) + ' UTC'; }
+
+async function simTick() {
+  if (!sim.running) return;
+
+  // Fetch 15m UT Bot for all coins in parallel
+  const tasks = COINS.map(coin => async () => {
+    const klines = await fetchKlines(coin, '15m', 60);
+    return { coin, result: utBot(klines) };
+  });
+
+  const raw = await pool(tasks, CONCURRENCY);
+
+  for (const item of raw) {
+    if (!item) continue;
+    const { coin, result } = item;
+    if (!result || result.signal === 'NO_DATA' || result.price == null) continue;
+
+    const { signal, stop, price } = result;
+    const prevSig = sim.prevSignals[coin];
+    const inPos   = !!sim.positions[coin];
+
+    // OPEN: fresh BUY signal and no open position
+    if (signal === 'BUY' && !inPos) {
+      const qty  = sim.budget / price;
+      sim.positions[coin] = {
+        entryPrice: price, entryTime: nowISO(), entryTs: Date.now(),
+        qty, cost: sim.budget, stop
+      };
+      toast('Pozisyon Açıldı', `${coin} @ ${fmtP(price)}`);
+    }
+
+    // CLOSE: SELL or SELL_HOLD and we have a position
+    if ((signal === 'SELL' || signal === 'SELL_HOLD') && inPos) {
+      const pos = sim.positions[coin];
+      delete sim.positions[coin];
+      const revenue = pos.qty * price;
+      const pnl     = revenue - pos.cost;
+      const pnlPct  = (pnl / pos.cost) * 100;
+      const durMs   = Date.now() - pos.entryTs;
+      const h = Math.floor(durMs / 3600000);
+      const m = Math.floor((durMs % 3600000) / 60000);
+
+      sim.trades.unshift({
+        coin, entryPrice: pos.entryPrice, exitPrice: price,
+        qty: pos.qty, cost: pos.cost, revenue,
+        pnl: +pnl.toFixed(4), pnlPct: +pnlPct.toFixed(2),
+        entryTime: pos.entryTime, exitTime: nowISO(),
+        duration: `${h}s ${m}dk`, win: pnl >= 0, triggerSig: signal
+      });
+      sim.totalRealizedPnl = +(sim.totalRealizedPnl + pnl).toFixed(4);
+      toast(pnl>=0?'✅ Karlı Kapandı':'❌ Zararlı Kapandı',
+        `${coin}: ${pnl>=0?'+':''}${pnl.toFixed(2)}$ (${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%)`);
+    }
+
+    sim.prevSignals[coin] = signal;
+  }
+
+  saveSim();
+  renderSim();
+}
+
+// ══════════════════════════════════════════════════════════════
+// SIMULATION RENDER (with live prices)
+// ══════════════════════════════════════════════════════════════
+function pnlCls(v) { return v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu'; }
+function pnlFmt(v) { return (v>=0?'+':'')+v.toFixed(2)+'$'; }
+
+async function renderSim() {
+  const running = sim.running;
+
+  // UI controls
+  document.getElementById('simStartBtn').style.display = running ? 'none' : '';
+  document.getElementById('simStopBtn').style.display  = running ? '' : 'none';
+  document.getElementById('simBudget').disabled = running;
+  const pill = document.getElementById('simPill');
+  pill.textContent = running ? 'CANLI' : 'KAPALI';
+  pill.className   = 'sim-status-pill ' + (running ? 'on' : 'off');
+  document.getElementById('badge-sim').textContent = running ? 'CANLI' : 'KAPALI';
+  document.getElementById('badge-sim').className   = 'tab-badge' + (running ? '' : ' red');
+  if (sim.startedAt)
+    document.getElementById('simStartedAt').textContent = 'Başlangıç: ' + sim.startedAt;
+
+  // Status bar sim indicator
+  const show = running ? '' : 'none';
+  document.getElementById('simBar').style.display     = show;
+  document.getElementById('simDot').style.display     = show;
+  document.getElementById('simBarText').style.display = show;
+  if (running) document.getElementById('simBarText').textContent = 'Simülasyon aktif';
+
+  // Fetch live prices for open positions
+  const posCoins = Object.keys(sim.positions);
+  let totalUnreal = 0;
+  const enriched = {};
+
+  if (posCoins.length) {
+    const priceTasks = posCoins.map(coin => async () => {
+      const p = await fetchPrice(coin);
+      return { coin, p };
+    });
+    const prices = await pool(priceTasks, CONCURRENCY);
+    for (const { coin, p } of prices) {
+      const pos = sim.positions[coin];
+      const cur = p || pos.entryPrice;
+      const unreal    = (cur - pos.entryPrice) * pos.qty;
+      const unrealPct = ((cur - pos.entryPrice) / pos.entryPrice) * 100;
+      totalUnreal += unreal;
+      enriched[coin] = { ...pos, cur, unreal: +unreal.toFixed(4), unrealPct: +unrealPct.toFixed(2) };
+    }
+  }
+
+  const trades  = sim.trades;
+  const wins    = trades.filter(t => t.win).length;
+  const losses  = trades.filter(t => !t.win).length;
+  const wr      = trades.length ? (wins/trades.length*100).toFixed(1)+'%' : '—';
+  const rPnl    = sim.totalRealizedPnl;
+  const uPnl    = +totalUnreal.toFixed(4);
+  const tPnl    = +(rPnl + uPnl).toFixed(4);
+
+  document.getElementById('sTrades').textContent  = trades.length;
+  document.getElementById('sWins').textContent    = wins;
+  document.getElementById('sLosses').textContent  = losses;
+  document.getElementById('sWinRate').textContent = wr;
+  document.getElementById('sOpenPos').textContent = posCoins.length;
+
+  const rEl = document.getElementById('sRealPnl');
+  rEl.textContent = pnlFmt(rPnl); rEl.className = 'card-value ' + pnlCls(rPnl);
+  const uEl = document.getElementById('sUnrealPnl');
+  uEl.textContent = pnlFmt(uPnl); uEl.className = 'card-value ' + pnlCls(uPnl);
+  const tEl = document.getElementById('sTotalPnl');
+  tEl.textContent = pnlFmt(tPnl); tEl.className = 'card-value ' + pnlCls(tPnl);
+  if (trades.length) {
+    const best  = trades.reduce((a,b) => a.pnl>b.pnl?a:b);
+    document.getElementById('sTotalSub').textContent = `En iyi: ${best.coin} (${pnlFmt(best.pnl)})`;
+  }
+
+  // Open positions table
+  const posEl = document.getElementById('simPositions');
+  posEl.innerHTML = posCoins.length ? `<div class="tbl-wrap" style="margin-bottom:18px"><table>
+    <thead><tr><th>Coin</th><th>Giriş</th><th>Anlık</th><th>Miktar</th><th>Maliyet</th><th>Açık K/Z</th><th>K/Z %</th><th>Giriş Zamanı</th></tr></thead>
+    <tbody>${posCoins.map(coin => {
+      const e = enriched[coin] || {};
+      const u = e.unreal ?? 0, up = e.unrealPct ?? 0;
+      return `<tr>
+        <td><b>${coin}</b></td><td>${fmtP(e.entryPrice)}</td><td><b>${fmtP(e.cur)}</b></td>
+        <td style="font-size:11px;color:var(--muted)">${e.qty?.toFixed(6)??'—'}</td>
+        <td>$${(e.cost??0).toFixed(2)}</td>
+        <td class="${pnlCls(u)}">${pnlFmt(u)}</td>
+        <td class="${pnlCls(up)}">${up>=0?'+':''}${up}%</td>
+        <td style="font-size:11px;color:var(--muted)">${e.entryTime??'—'}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>` : `<div class="empty">Açık pozisyon yok.</div>`;
+
+  // Trades table
+  const trdEl = document.getElementById('simTrades');
+  trdEl.innerHTML = trades.length ? `<div class="tbl-wrap"><table>
+    <thead><tr><th>Coin</th><th>Giriş</th><th>Çıkış</th><th>K/Z</th><th>K/Z %</th><th>Süre</th><th>Sinyal</th><th>Çıkış</th></tr></thead>
+    <tbody>${trades.map(t => `<tr class="${t.win?'trade-win':'trade-loss'}">
+      <td><b>${t.coin}</b></td><td>${fmtP(t.entryPrice)}</td><td>${fmtP(t.exitPrice)}</td>
+      <td class="${pnlCls(t.pnl)}">${pnlFmt(t.pnl)}</td>
+      <td class="${pnlCls(t.pnlPct)}">${t.pnlPct>=0?'+':''}${t.pnlPct}%</td>
+      <td style="color:var(--muted);font-size:11px">${t.duration}</td>
+      <td>${sigBadge(t.triggerSig)}</td>
+      <td style="font-size:11px;color:var(--muted)">${t.exitTime}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>` : `<div class="empty">Henüz kapalı işlem yok.</div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SIM CONTROLS
+// ══════════════════════════════════════════════════════════════
+function simStart() {
+  sim.running   = true;
+  sim.startedAt = nowISO();
+  sim.budget    = parseFloat(document.getElementById('simBudget').value) || 1000;
+  saveSim();
+  toast('Simülasyon Başladı', `Her coin için $${sim.budget} bütçe. 15dk'da bir kontrol.`);
+  renderSim();
+  simTick(); // immediate first check
+}
+
+function simStop() {
+  sim.running = false;
+  saveSim();
+  toast('Durduruldu', 'Sonuçlar korundu.');
+  renderSim();
+}
+
+function simReset() {
+  if (!confirm('Tüm simülasyon verisi silinecek. Emin misiniz?')) return;
+  sim = defaultSim();
+  saveSim();
+  toast('Sıfırlandı', '');
+  renderSim();
+}
+
+// ══════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════════════════════
+async function toggleNotif() {
+  if (notifEnabled) {
+    notifEnabled = false;
+    document.getElementById('notifBtn').classList.remove('active');
+    toast('Bildirimler kapatıldı',''); return;
+  }
+  if (!('Notification' in window)) { toast('Desteklenmiyor',''); return; }
+  if (await Notification.requestPermission() === 'granted') {
+    notifEnabled = true;
+    document.getElementById('notifBtn').classList.add('active');
+    toast('Bildirimler Açık','Yeni sinyal gelince uyarılacaksınız.');
+  } else { toast('İzin Reddedildi','Tarayıcı ayarlarından verin.'); }
+}
+function sendNotif(title, body) {
+  if (notifEnabled && Notification.permission === 'granted')
+    new Notification(title, { body });
+}
+
+// ══════════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════════
+function toast(title, body, ms = 4500) {
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastBody').textContent  = body;
+  const el = document.getElementById('toast');
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.display = 'none', ms);
+}
+
+// ══════════════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════════════
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('page-' + name).classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════════
+// COUNTDOWN
+// ══════════════════════════════════════════════════════════════
+setInterval(() => {
+  if (!nextScanTs) { document.getElementById('countdown').textContent = '--:--'; return; }
+  const diff = Math.max(0, Math.floor(nextScanTs - Date.now()/1000));
+  const m = String(Math.floor(diff/60)).padStart(2,'0');
+  const s = String(diff%60).padStart(2,'0');
+  document.getElementById('countdown').textContent = `${m}:${s}`;
+}, 1000);
+
+// ══════════════════════════════════════════════════════════════
+// AUTO LOOPS
+// ══════════════════════════════════════════════════════════════
+// Auto scan every 15 min
+setInterval(() => { if (!scanning) startScan(); }, SCAN_INTERVAL_MS);
+
+// Sim live P&L refresh every 15s
+setInterval(() => { if (sim.running || Object.keys(sim.positions).length) renderSim(); }, SIM_REFRESH_MS);
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+renderSim();   // load saved sim state immediately
+startScan();   // kick off first scan
+</script>
+</body>
+</html>
