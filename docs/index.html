@@ -188,6 +188,9 @@
     <button class="btn btn-gray" onclick="simReset()">↺ Sıfırla</button>
     <span class="sim-status-pill off" id="simPill">KAPALI</span>
     <span style="font-size:11px;color:var(--muted)" id="simStartedAt"></span>
+    <span style="font-size:11px;background:#1c2128;border:1px solid var(--border);border-radius:6px;padding:3px 9px;color:var(--muted)">
+      Strateji: <b style="color:var(--blue)">15m BUY + 4H onay · ATR×2.5</b>
+    </span>
   </div>
 
   <div class="summary">
@@ -226,7 +229,7 @@ const SCAN_INTERVAL_MS = 15 * 60 * 1000; // 15 min
 const SIM_REFRESH_MS   = 15 * 1000;      // 15s live P&L
 const CONCURRENCY      = 8;              // parallel Binance requests
 const ATR_PERIOD       = 10;
-const ATR_MULT         = 1.5;
+const ATR_MULT         = 2.5;   // 1.5→2.5: daha geniş stop, whipsaw azalır
 const TIMEFRAMES       = ['15m','1h','2h','4h'];
 
 const EXCLUDE = new Set([
@@ -541,36 +544,41 @@ function nowISO() { return new Date().toLocaleString('tr-TR',{timeZone:'UTC'}) +
 async function simTick() {
   if (!sim.running) return;
 
-  // Fetch 15m UT Bot for all coins in parallel
+  // Fetch 15m AND 4H UT Bot for all coins (4H filtresi için)
   const tasks = COINS.map(coin => async () => {
-    const klines = await fetchKlines(coin, '15m', 60);
-    return { coin, result: utBot(klines) };
+    const [klines15, klines4h] = await Promise.all([
+      fetchKlines(coin, '15m', 60),
+      fetchKlines(coin, '4h',  60),
+    ]);
+    return { coin, r15: utBot(klines15), r4h: utBot(klines4h) };
   });
 
   const raw = await pool(tasks, CONCURRENCY);
 
   for (const item of raw) {
     if (!item) continue;
-    const { coin, result } = item;
-    if (!result || result.signal === 'NO_DATA' || result.price == null) continue;
+    const { coin, r15, r4h } = item;
+    if (!r15 || r15.signal === 'NO_DATA' || r15.price == null) continue;
 
-    const { signal, stop, price } = result;
-    const prevSig = sim.prevSignals[coin];
-    const inPos   = !!sim.positions[coin];
+    const { signal, stop, price } = r15;
+    const sig4h     = r4h?.signal || 'NO_DATA';
+    const h4Bullish = sig4h === 'BUY' || sig4h === 'BUY_HOLD';
+    const inPos     = !!sim.positions[coin];
 
-    // OPEN: fresh BUY signal and no open position
-    if (signal === 'BUY' && !inPos) {
-      const qty  = sim.budget / price;
+    // OPEN: 15m taze BUY + 4H yükseliş onayı + pozisyon yok
+    if (signal === 'BUY' && h4Bullish && !inPos) {
+      const qty = sim.budget / price;
       sim.positions[coin] = {
         entryPrice: price, entryTime: nowISO(), entryTs: Date.now(),
-        qty, cost: sim.budget, stop
+        qty, cost: sim.budget, stop,
+        entryReason: `15m BUY + 4H ${sig4h}`
       };
-      toast('Pozisyon Açıldı', `${coin} @ ${fmtP(price)}`);
+      toast('📈 Pozisyon Açıldı', `${coin} @ ${fmtP(price)} | 4H: ${sig4h}`);
     }
 
-    // CLOSE: SELL or SELL_HOLD and we have a position
+    // CLOSE: 15m SELL veya SELL_HOLD (çıkışta 4H filtresi yok)
     if ((signal === 'SELL' || signal === 'SELL_HOLD') && inPos) {
-      const pos = sim.positions[coin];
+      const pos     = sim.positions[coin];
       delete sim.positions[coin];
       const revenue = pos.qty * price;
       const pnl     = revenue - pos.cost;
@@ -584,11 +592,14 @@ async function simTick() {
         qty: pos.qty, cost: pos.cost, revenue,
         pnl: +pnl.toFixed(4), pnlPct: +pnlPct.toFixed(2),
         entryTime: pos.entryTime, exitTime: nowISO(),
+        entryReason: pos.entryReason || '15m BUY',
         duration: `${h}s ${m}dk`, win: pnl >= 0, triggerSig: signal
       });
       sim.totalRealizedPnl = +(sim.totalRealizedPnl + pnl).toFixed(4);
-      toast(pnl>=0?'✅ Karlı Kapandı':'❌ Zararlı Kapandı',
-        `${coin}: ${pnl>=0?'+':''}${pnl.toFixed(2)}$ (${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%)`);
+      toast(
+        pnl >= 0 ? '✅ Karlı Kapandı' : '❌ Zararlı Kapandı',
+        `${coin}: ${pnl>=0?'+':''}${pnl.toFixed(2)}$ (${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%)`
+      );
     }
 
     sim.prevSignals[coin] = signal;
@@ -675,16 +686,16 @@ async function renderSim() {
   // Open positions table
   const posEl = document.getElementById('simPositions');
   posEl.innerHTML = posCoins.length ? `<div class="tbl-wrap" style="margin-bottom:18px"><table>
-    <thead><tr><th>Coin</th><th>Giriş</th><th>Anlık</th><th>Miktar</th><th>Maliyet</th><th>Açık K/Z</th><th>K/Z %</th><th>Giriş Zamanı</th><th>Grafik</th></tr></thead>
+    <thead><tr><th>Coin</th><th>Giriş</th><th>Anlık</th><th>Maliyet</th><th>Açık K/Z</th><th>K/Z %</th><th>Giriş Nedeni</th><th>Giriş Zamanı</th><th>Grafik</th></tr></thead>
     <tbody>${posCoins.map(coin => {
       const e = enriched[coin] || {};
       const u = e.unreal ?? 0, up = e.unrealPct ?? 0;
       return `<tr>
         <td><b>${coin}</b></td><td>${fmtP(e.entryPrice)}</td><td><b>${fmtP(e.cur)}</b></td>
-        <td style="font-size:11px;color:var(--muted)">${e.qty?.toFixed(6)??'—'}</td>
         <td>$${(e.cost??0).toFixed(2)}</td>
         <td class="${pnlCls(u)}">${pnlFmt(u)}</td>
         <td class="${pnlCls(up)}">${up>=0?'+':''}${up}%</td>
+        <td style="font-size:11px;color:var(--blue)">${e.entryReason??'—'}</td>
         <td style="font-size:11px;color:var(--muted)">${e.entryTime??'—'}</td>
         <td>${tvBtn(coin)}</td>
       </tr>`;
