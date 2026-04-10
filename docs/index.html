@@ -69,6 +69,10 @@
     .buy-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
     .buy-dot.fresh{background:var(--green)}.buy-dot.hold{background:#2a5c3a}
 
+    .tv-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#131722;border:1px solid #2a3a5c;color:#2196f3;font-size:11px;font-weight:700;text-decoration:none;transition:all .18s;letter-spacing:.3px;white-space:nowrap}
+    .tv-btn:hover{background:#1e2d47;border-color:#4a7acc;color:#fff}
+    .tv-btn svg{width:11px;height:11px;flex-shrink:0}
+
     .pnl-pos{color:var(--green);font-weight:700}
     .pnl-neg{color:var(--red);font-weight:700}
     .pnl-neu{color:var(--muted)}
@@ -130,7 +134,7 @@
 <!-- TABS -->
 <div class="tabs">
   <div class="tab active" id="tab-scanner" onclick="switchTab('scanner')">
-    📊 Tarayıcı <span class="tab-badge" id="badge-buy">0</span>
+    📊 Tarayıcı <span class="tab-badge" id="badge-buy">0 BUY</span>
   </div>
   <div class="tab" id="tab-sim" onclick="switchTab('sim')">
     🤖 Simülasyon <span class="tab-badge red" id="badge-sim">KAPALI</span>
@@ -158,15 +162,15 @@
 <div class="tab-page active" id="page-scanner">
   <div class="summary">
     <div class="card"><div class="card-label">Taranan</div><div class="card-value cv-blue" id="cTotal">—</div></div>
-    <div class="card"><div class="card-label">4/4 TF BUY</div><div class="card-value cv-green" id="cAll">—</div></div>
-    <div class="card"><div class="card-label">2-3 TF BUY</div><div class="card-value cv-yellow" id="cPartial">—</div></div>
-    <div class="card"><div class="card-label">Hold Trend</div><div class="card-value" style="color:#52c27a" id="cHold">—</div></div>
-    <div class="card"><div class="card-label">Düşüş/Nötr</div><div class="card-value cv-red" id="cFail">—</div></div>
+    <div class="card"><div class="card-label">15m BUY 🔥</div><div class="card-value cv-green" id="cAll">—</div><div class="card-sub">Simülasyon açar</div></div>
+    <div class="card"><div class="card-label">15m HOLD</div><div class="card-value" style="color:#52c27a" id="cPartial">—</div><div class="card-sub">Trend devam</div></div>
+    <div class="card"><div class="card-label">15m SELL</div><div class="card-value cv-red" id="cHold">—</div><div class="card-sub">Simülasyon kapar</div></div>
+    <div class="card"><div class="card-label">Diğer TF BUY</div><div class="card-value cv-yellow" id="cFail">—</div><div class="card-sub">15m nötr/düşüş</div></div>
   </div>
   <div class="legend">
-    <div class="legend-item"><span class="sig sig-buy">BUY</span> Taze sinyal</div>
-    <div class="legend-item"><span class="sig sig-buy-hold">HOLD</span> Yükseliş trendi</div>
-    <div class="legend-item"><span class="sig sig-sell">SELL</span> Taze satış</div>
+    <div class="legend-item"><span class="sig sig-buy">BUY</span> Taze sinyal — sim pozisyon açar</div>
+    <div class="legend-item"><span class="sig sig-buy-hold">HOLD</span> Yükseliş trendi devam</div>
+    <div class="legend-item"><span class="sig sig-sell">SELL</span> Taze satış — sim kapar</div>
     <div class="legend-item"><span class="sig sig-sell-hold">S.HOLD</span> Düşüş trendi</div>
   </div>
   <div id="scanContent">
@@ -450,48 +454,81 @@ function buyBar(r) {
     `<span style="font-size:10px;color:var(--muted);margin-left:4px">${r.buyCount} BUY</span></div>`;
 }
 
+function tvBtn(coin) {
+  const url = `https://www.tradingview.com/chart/?symbol=BINANCE:${coin}USDT&interval=15`;
+  return `<a href="${url}" target="_blank" rel="noopener" class="tv-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    TradingView
+  </a>`;
+}
+
 function scanTable(rows) {
   if (!rows.length) return `<div class="empty">Bu kategoride coin yok.</div>`;
   return `<div class="tbl-wrap"><table>
-    <thead><tr><th>#</th><th>Coin</th><th>Fiyat</th>${TIMEFRAMES.map(tf=>`<th>${tf.toUpperCase()}</th>`).join('')}<th>Bar</th><th>Stop 15m</th></tr></thead>
+    <thead><tr>
+      <th>#</th><th>Coin</th><th>Fiyat</th>
+      <th>15m</th><th>1H</th><th>2H</th><th>4H</th>
+      <th>Stop 15m</th><th>Grafik</th>
+    </tr></thead>
     <tbody>${rows.map((r,i)=>`<tr>
       <td style="color:var(--muted)">${i+1}</td>
       <td><span class="coin-sym">${r.coin}</span></td>
       <td><b>${fmtP(r.price)}</b></td>
       ${TIMEFRAMES.map(tf=>`<td>${sigBadge(r.timeframes[tf]?.signal||'NO_DATA')}</td>`).join('')}
-      <td>${buyBar(r)}</td>
       <td style="font-size:11px;color:var(--muted)">${fmtP(r.timeframes['15m']?.stop)}</td>
+      <td>${tvBtn(r.coin)}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
 
+function sig15m(r) { return r.timeframes['15m']?.signal || 'NO_DATA'; }
+
 function renderScanner() {
   if (!scanResults) return;
-  const allBuy  = scanResults.filter(r => r.buyCount === 4);
-  const partial = scanResults.filter(r => r.buyCount >= 2 && r.buyCount < 4);
-  const holdOnly= scanResults.filter(r => r.buyCount === 0 && r.holdCount >= 2);
-  const rest    = scanResults.filter(r => r.buyCount < 2 && !(r.buyCount===0&&r.holdCount>=2));
+
+  // Primary grouping: 15m signal (this drives the simulation)
+  const buy15     = scanResults.filter(r => sig15m(r) === 'BUY');
+  const hold15    = scanResults.filter(r => sig15m(r) === 'BUY_HOLD');
+  const sell15    = scanResults.filter(r => sig15m(r) === 'SELL' || sig15m(r) === 'SELL_HOLD');
+  // Not 15m buy/hold/sell → show if higher TF has buy signal
+  const otherBuy  = scanResults.filter(r => {
+    const s = sig15m(r);
+    return (s === 'NEUTRAL' || s === 'NO_DATA') && r.buyCount > 0;
+  });
+
+  // Sort each group: higher other-TF buy count first
+  [buy15, hold15, sell15, otherBuy].forEach(g =>
+    g.sort((a,b) => b.buyCount - a.buyCount || a.coin.localeCompare(b.coin))
+  );
 
   document.getElementById('cTotal').textContent   = scanResults.length;
-  document.getElementById('cAll').textContent     = allBuy.length;
-  document.getElementById('cPartial').textContent = partial.length;
-  document.getElementById('cHold').textContent    = holdOnly.length;
-  document.getElementById('cFail').textContent    = rest.length;
-  document.getElementById('badge-buy').textContent = allBuy.length;
+  document.getElementById('cAll').textContent     = buy15.length;
+  document.getElementById('cPartial').textContent = hold15.length;
+  document.getElementById('cHold').textContent    = sell15.length;
+  document.getElementById('cFail').textContent    = otherBuy.length;
+  document.getElementById('badge-buy').textContent = `${buy15.length} BUY`;
 
-  if (prevBuyAll >= 0 && allBuy.length > prevBuyAll) {
-    const names = allBuy.slice(0,3).map(r=>r.coin).join(', ');
-    sendNotif('UT Bot — 4/4 TF BUY!', names);
-    toast('Yeni BUY!', `${names} — 4 TF'de BUY!`, 8000);
+  if (prevBuyAll >= 0 && buy15.length > prevBuyAll) {
+    const names = buy15.slice(0,3).map(r=>r.coin).join(', ');
+    sendNotif('UT Bot 15m BUY!', names);
+    toast('Yeni 15m BUY!', `${names}`, 8000);
   }
-  prevBuyAll = allBuy.length;
+  prevBuyAll = buy15.length;
 
   document.getElementById('scanContent').innerHTML = `<div class="section">
-    <div class="sec-title">✅ 4/4 TF BUY — Güçlü AL <span class="sec-sub">(15m+1H+2H+4H)</span></div>
-    ${allBuy.length ? scanTable(allBuy) : `<div class="card" style="padding:16px;text-align:center;color:var(--muted);margin-bottom:18px">Şu an 4/4 TF BUY yok.</div>`}
-    <div class="sec-title">⚡ 2-3/4 TF BUY</div>${scanTable(partial)}
-    <div class="sec-title">📈 BUY Hold — Trend Devam</div>${scanTable(holdOnly)}
-    <div class="sec-title">❌ Düşüş / Nötr</div>${scanTable(rest)}
+    <div class="sec-title">🔥 15m BUY — Simülasyon Açar <span class="sec-sub">(UT Bot taze alım sinyali)</span></div>
+    ${buy15.length ? scanTable(buy15) : `<div class="card" style="padding:16px;text-align:center;color:var(--muted);margin-bottom:18px">Şu an 15m BUY sinyali yok.</div>`}
+
+    <div class="sec-title">📈 15m HOLD — Yükseliş Trendi Devam</div>
+    ${scanTable(hold15)}
+
+    <div class="sec-title">🔴 15m SELL / SELL HOLD — Simülasyon Kapar</div>
+    ${scanTable(sell15)}
+
+    ${otherBuy.length ? `<div class="sec-title">⚡ Diğer TF BUY <span class="sec-sub">(15m henüz nötr)</span></div>${scanTable(otherBuy)}` : ''}
+
     <div style="padding:14px 0;text-align:center;font-size:11px;color:var(--muted)">⚠️ Yatırım tavsiyesi değildir. Max %1-2 risk.</div>
   </div>`;
 }
@@ -638,7 +675,7 @@ async function renderSim() {
   // Open positions table
   const posEl = document.getElementById('simPositions');
   posEl.innerHTML = posCoins.length ? `<div class="tbl-wrap" style="margin-bottom:18px"><table>
-    <thead><tr><th>Coin</th><th>Giriş</th><th>Anlık</th><th>Miktar</th><th>Maliyet</th><th>Açık K/Z</th><th>K/Z %</th><th>Giriş Zamanı</th></tr></thead>
+    <thead><tr><th>Coin</th><th>Giriş</th><th>Anlık</th><th>Miktar</th><th>Maliyet</th><th>Açık K/Z</th><th>K/Z %</th><th>Giriş Zamanı</th><th>Grafik</th></tr></thead>
     <tbody>${posCoins.map(coin => {
       const e = enriched[coin] || {};
       const u = e.unreal ?? 0, up = e.unrealPct ?? 0;
@@ -649,6 +686,7 @@ async function renderSim() {
         <td class="${pnlCls(u)}">${pnlFmt(u)}</td>
         <td class="${pnlCls(up)}">${up>=0?'+':''}${up}%</td>
         <td style="font-size:11px;color:var(--muted)">${e.entryTime??'—'}</td>
+        <td>${tvBtn(coin)}</td>
       </tr>`;
     }).join('')}</tbody>
   </table></div>` : `<div class="empty">Açık pozisyon yok.</div>`;
@@ -656,7 +694,7 @@ async function renderSim() {
   // Trades table
   const trdEl = document.getElementById('simTrades');
   trdEl.innerHTML = trades.length ? `<div class="tbl-wrap"><table>
-    <thead><tr><th>Coin</th><th>Giriş</th><th>Çıkış</th><th>K/Z</th><th>K/Z %</th><th>Süre</th><th>Sinyal</th><th>Çıkış</th></tr></thead>
+    <thead><tr><th>Coin</th><th>Giriş</th><th>Çıkış</th><th>K/Z</th><th>K/Z %</th><th>Süre</th><th>Sinyal</th><th>Çıkış Zamanı</th><th>Grafik</th></tr></thead>
     <tbody>${trades.map(t => `<tr class="${t.win?'trade-win':'trade-loss'}">
       <td><b>${t.coin}</b></td><td>${fmtP(t.entryPrice)}</td><td>${fmtP(t.exitPrice)}</td>
       <td class="${pnlCls(t.pnl)}">${pnlFmt(t.pnl)}</td>
@@ -664,6 +702,7 @@ async function renderSim() {
       <td style="color:var(--muted);font-size:11px">${t.duration}</td>
       <td>${sigBadge(t.triggerSig)}</td>
       <td style="font-size:11px;color:var(--muted)">${t.exitTime}</td>
+      <td>${tvBtn(t.coin)}</td>
     </tr>`).join('')}</tbody>
   </table></div>` : `<div class="empty">Henüz kapalı işlem yok.</div>`;
 }
