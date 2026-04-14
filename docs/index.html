@@ -765,6 +765,8 @@ const MEME_COINS = [
   'TURBO','BOME','POPCAT','NEIRO','PNUT','ACT','GOAT','DOGS',
   'PENGU','TRUMP','BABYDOGE',
 ];
+// Binance'da farklı sembol adı olan coinler
+const SYMBOL_OVERRIDE = { 'BABYDOGE': '1000BABYDOGE' };
 
 // ══════════════════════════════════════════════════════════════
 // STATE
@@ -833,13 +835,15 @@ function switchTab(name) {
 // ══════════════════════════════════════════════════════════════
 // BINANCE API
 // ══════════════════════════════════════════════════════════════
+function binanceSym(symbol) { return (SYMBOL_OVERRIDE[symbol] || symbol) + 'USDT'; }
+
 async function fetchKlines(symbol, interval, limit=60) {
-  const res = await fetch(`${BINANCE}/klines?symbol=${symbol}USDT&interval=${interval}&limit=${limit}`);
+  const res = await fetch(`${BINANCE}/klines?symbol=${binanceSym(symbol)}&interval=${interval}&limit=${limit}`);
   if (!res.ok) return null;
   return res.json();
 }
 async function fetchPrice(symbol) {
-  try { const res=await fetch(`${BINANCE}/ticker/price?symbol=${symbol}USDT`); const d=await res.json(); return parseFloat(d.price); } catch { return null; }
+  try { const res=await fetch(`${BINANCE}/ticker/price?symbol=${binanceSym(symbol)}`); const d=await res.json(); return parseFloat(d.price); } catch { return null; }
 }
 async function pool(tasks, concurrency) {
   const results=new Array(tasks.length); let idx=0;
