@@ -132,15 +132,16 @@ aside.collapsed { width: 56px; }
 
 /* Collapse toggle button */
 .sidebar-toggle {
-  position: absolute; top: 14px; right: -12px; z-index: 10;
-  width: 24px; height: 24px; border-radius: 50%;
+  position: absolute; top: 14px; right: 10px; z-index: 10;
+  width: 24px; height: 24px; border-radius: 6px;
   background: var(--sc-high); border: 1px solid rgba(65,71,82,0.3);
   color: var(--on-sv); display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  cursor: pointer; transition: all 0.2s;
 }
 .sidebar-toggle:hover { background: var(--sc-highest); color: var(--primary); }
-.sidebar-toggle .material-symbols-outlined { font-size: 14px; transition: transform 0.22s; }
+.sidebar-toggle .material-symbols-outlined { font-size: 16px; transition: transform 0.22s; }
 aside.collapsed .sidebar-toggle .material-symbols-outlined { transform: rotate(180deg); }
+aside.collapsed .sidebar-toggle { right: auto; left: 50%; transform: translateX(-50%); top: 14px; }
 
 .sidebar-brand { padding: 20px 20px 12px; white-space: nowrap; overflow: hidden; }
 .sidebar-brand h2 { font-size: 18px; font-weight: 900; color: var(--primary); }
