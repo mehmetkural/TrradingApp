@@ -124,18 +124,38 @@ aside {
   width: 240px; flex-shrink: 0;
   background: var(--sc-low); border-right: 1px solid rgba(65,71,82,0.15);
   display: flex; flex-direction: column;
-  position: sticky; top: 57px; height: calc(100vh - 57px); overflow-y: auto;
+  position: sticky; top: 57px; height: calc(100vh - 57px); overflow: hidden;
+  transition: width 0.22s cubic-bezier(.4,0,.2,1);
 }
+aside.collapsed { width: 56px; }
 @media(max-width:1024px){ aside { display: none; } }
 
-.sidebar-brand { padding: 20px 20px 12px; }
+/* Collapse toggle button */
+.sidebar-toggle {
+  position: absolute; top: 14px; right: -12px; z-index: 10;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--sc-high); border: 1px solid rgba(65,71,82,0.3);
+  color: var(--on-sv); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.sidebar-toggle:hover { background: var(--sc-highest); color: var(--primary); }
+.sidebar-toggle .material-symbols-outlined { font-size: 14px; transition: transform 0.22s; }
+aside.collapsed .sidebar-toggle .material-symbols-outlined { transform: rotate(180deg); }
+
+.sidebar-brand { padding: 20px 20px 12px; white-space: nowrap; overflow: hidden; }
 .sidebar-brand h2 { font-size: 18px; font-weight: 900; color: var(--primary); }
 .sidebar-brand p { font-size: 9px; letter-spacing: 0.2em; color: rgba(192,199,212,0.4); font-weight: 700; margin-top: 2px; }
-.sidebar-nav { flex: 1; padding: 4px 10px; display: flex; flex-direction: column; gap: 2px; }
+aside.collapsed .sidebar-brand { padding: 20px 0 12px; display: flex; justify-content: center; }
+aside.collapsed .sidebar-brand h2 { font-size: 14px; text-align: center; }
+aside.collapsed .sidebar-brand p { display: none; }
+
+.sidebar-nav { flex: 1; padding: 4px 10px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; overflow-x: hidden; }
+aside.collapsed .sidebar-nav { padding: 4px 6px; align-items: center; }
+
 .nav-link {
   display: flex; align-items: center; gap: 10px;
   padding: 11px 14px; border-radius: 8px; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.08em; white-space: nowrap;
   color: rgba(223,226,235,0.45); transition: all 0.15s; text-align: left; width: 100%;
 }
 .nav-link:hover { background: rgba(28,32,38,0.7); color: var(--on-surface); }
@@ -143,13 +163,22 @@ aside {
   background: var(--sc); color: var(--primary);
   border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; padding-left: 11px;
 }
-.nav-link .material-symbols-outlined { font-size: 18px; }
+.nav-link .material-symbols-outlined { font-size: 18px; flex-shrink: 0; }
+.nav-link .nav-text { overflow: hidden; transition: opacity 0.15s, width 0.22s; }
+aside.collapsed .nav-link { padding: 11px; justify-content: center; border-left: none !important; border-radius: 8px !important; width: 44px; }
+aside.collapsed .nav-link.active { border-left: none; padding-left: 11px; }
+aside.collapsed .nav-link .nav-text { display: none; }
+aside.collapsed .nav-link .nav-badge { display: none; }
+
 .nav-badge {
   margin-left: auto; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 99px;
   background: rgba(103,223,112,0.15); color: var(--tertiary); font-family: ui-monospace, monospace;
+  flex-shrink: 0;
 }
 .sidebar-footer { padding: 12px 10px; border-top: 1px solid rgba(65,71,82,0.12); }
-.sidebar-meta { padding: 10px 18px; font-size: 10px; color: rgba(192,199,212,0.5); line-height: 1.6; border-top: 1px solid rgba(65,71,82,0.1); }
+aside.collapsed .sidebar-footer { display: none; }
+.sidebar-meta { padding: 10px 18px; font-size: 10px; color: rgba(192,199,212,0.5); line-height: 1.6; border-top: 1px solid rgba(65,71,82,0.1); white-space: nowrap; overflow: hidden; }
+aside.collapsed .sidebar-meta { display: none; }
 .sidebar-meta #scanProgress { color: rgba(162,201,255,0.7); }
 
 /* ═══ MAIN CONTENT ════════════════════════════════════════════ */
@@ -390,7 +419,10 @@ td.num { font-family: ui-monospace, monospace; }
 <div class="body-layout">
 
   <!-- Sidebar -->
-  <aside>
+  <aside id="sidebar">
+    <button class="sidebar-toggle" onclick="toggleSidebar()" title="Kenar çubuğunu kapat/aç">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </button>
     <div class="sidebar-brand">
       <h2>UT Bot</h2>
       <p>High-Density Terminal</p>
@@ -398,16 +430,16 @@ td.num { font-family: ui-monospace, monospace; }
     <nav class="sidebar-nav">
       <button class="nav-link active" id="nav-scanner" onclick="switchTab('scanner')">
         <span class="material-symbols-outlined">radar</span>
-        Tarayıcı
+        <span class="nav-text">Tarayıcı</span>
         <span class="nav-badge" id="badge-buy">0 BUY</span>
       </button>
       <button class="nav-link" id="nav-sim" onclick="switchTab('sim')">
         <span class="material-symbols-outlined">analytics</span>
-        Simülasyon
+        <span class="nav-text">Simülasyon</span>
       </button>
       <button class="nav-link" id="nav-meme" onclick="switchTab('meme')">
         <span class="material-symbols-outlined">token</span>
-        SimMEME 🐸
+        <span class="nav-text">SimMEME 🐸</span>
       </button>
     </nav>
     <div class="sidebar-meta">
@@ -418,7 +450,7 @@ td.num { font-family: ui-monospace, monospace; }
     <div class="sidebar-footer">
       <button class="nav-link" style="opacity:0.35">
         <span class="material-symbols-outlined" style="font-size:16px">settings</span>
-        Ayarlar
+        <span class="nav-text">Ayarlar</span>
       </button>
     </div>
   </aside>
@@ -744,6 +776,21 @@ let memeSim = loadMemeSim();
 function defaultMemeSim() { return { running:false, startedAt:null, budget:1000, positions:{}, trades:[], prevSignals:{}, totalRealizedPnl:0 }; }
 function loadMemeSim()    { try { const s=localStorage.getItem(MEME_SIM_KEY); return s?JSON.parse(s):defaultMemeSim(); } catch { return defaultMemeSim(); } }
 function saveMemeSim()    { try { localStorage.setItem(MEME_SIM_KEY, JSON.stringify(memeSim)); } catch {} }
+
+// ══════════════════════════════════════════════════════════════
+// SIDEBAR TOGGLE
+// ══════════════════════════════════════════════════════════════
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  sb.classList.toggle('collapsed');
+  try { localStorage.setItem('sidebar_collapsed', sb.classList.contains('collapsed')); } catch {}
+}
+(function initSidebar() {
+  try {
+    const saved = localStorage.getItem('sidebar_collapsed');
+    if (saved === 'true') document.getElementById('sidebar')?.classList.add('collapsed');
+  } catch {}
+})();
 
 // ══════════════════════════════════════════════════════════════
 // NAVIGATION
