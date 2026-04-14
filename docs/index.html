@@ -1,415 +1,663 @@
 <!DOCTYPE html>
-<html class="dark" lang="tr">
+<html lang="tr">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>UT Bot Tarayıcı</title>
-<script>
-tailwind.config = {
-  darkMode: "class",
-  theme: {
-    extend: {
-      colors: {
-        "secondary-fixed-dim": "#d8baff",
-        "surface-dim": "#10141a",
-        "surface-variant": "#31353c",
-        "on-secondary-fixed": "#290055",
-        "surface-container-highest": "#31353c",
-        "on-tertiary-container": "#004411",
-        "on-secondary-container": "#cda8ff",
-        "on-primary": "#00315c",
-        "inverse-on-surface": "#2d3137",
-        "on-primary-container": "#003a6b",
-        "on-primary-fixed": "#001c38",
-        "secondary-container": "#5d2d9c",
-        "background": "#10141a",
-        "on-surface": "#dfe2eb",
-        "surface": "#10141a",
-        "secondary-fixed": "#eddcff",
-        "on-error-container": "#ffdad6",
-        "inverse-primary": "#0060aa",
-        "on-tertiary-fixed": "#002105",
-        "tertiary-fixed-dim": "#67df70",
-        "surface-container-high": "#262a31",
-        "primary": "#a2c9ff",
-        "on-secondary-fixed-variant": "#5b2b9a",
-        "primary-fixed": "#d3e4ff",
-        "primary-fixed-dim": "#a2c9ff",
-        "on-primary-fixed-variant": "#004882",
-        "tertiary-fixed": "#83fc89",
-        "inverse-surface": "#dfe2eb",
-        "surface-bright": "#353940",
-        "surface-container-lowest": "#0a0e14",
-        "secondary": "#d8baff",
-        "surface-container": "#1c2026",
-        "on-secondary": "#430882",
-        "on-tertiary": "#00390d",
-        "surface-tint": "#a2c9ff",
-        "outline-variant": "#414752",
-        "on-background": "#dfe2eb",
-        "outline": "#8b919d",
-        "error": "#ffb4ab",
-        "on-error": "#690005",
-        "primary-container": "#58a6ff",
-        "tertiary-container": "#40ba51",
-        "surface-container-low": "#181c22",
-        "tertiary": "#67df70",
-        "on-surface-variant": "#c0c7d4",
-        "error-container": "#93000a",
-        "on-tertiary-fixed-variant": "#005317"
-      },
-      borderRadius: { "DEFAULT":"0.5rem","lg":"1rem","xl":"1.5rem","full":"9999px" },
-      fontFamily: { "headline":["Inter"],"body":["Inter"],"label":["Inter"] }
-    }
-  }
-}
-</script>
-<script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
 <style>
-body { font-family: 'Inter', sans-serif; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+/* ═══ CSS VARIABLES ═══════════════════════════════════════════ */
+:root {
+  --bg:          #10141a;
+  --surface:     #10141a;
+  --sc-lowest:   #0a0e14;
+  --sc-low:      #181c22;
+  --sc:          #1c2026;
+  --sc-high:     #262a31;
+  --sc-highest:  #31353c;
+  --on-surface:  #dfe2eb;
+  --on-sv:       #c0c7d4;
+  --outline:     #8b919d;
+  --outline-v:   #414752;
+  --primary:     #a2c9ff;
+  --primary-c:   #58a6ff;
+  --on-primary:  #00315c;
+  --secondary:   #d8baff;
+  --sec-c:       #5d2d9c;
+  --tertiary:    #67df70;
+  --on-tertiary: #00390d;
+  --error:       #ffb4ab;
+  --on-error:    #690005;
+  --error-c:     #93000a;
+}
+
+/* ═══ RESET + BASE ═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--on-surface); min-height: 100vh; }
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+input { font-family: inherit; }
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #10141a; }
-::-webkit-scrollbar-thumb { background: #31353c; border-radius: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--sc-highest); border-radius: 10px; }
+.mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+
+/* ═══ LAYOUT ══════════════════════════════════════════════════ */
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ═══ HEADER ══════════════════════════════════════════════════ */
+header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(38,42,49,0.88); backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(65,71,82,0.3);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+.header-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; gap: 12px;
+}
+.brand {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 800; font-size: 15px; color: var(--on-surface); white-space: nowrap;
+}
+.brand-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--tertiary);
+  animation: pulse 2s ease-in-out infinite; flex-shrink: 0;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* Top nav tabs */
+.tnav { display: flex; align-items: center; gap: 2px; }
+@media(max-width:640px){ .tnav { display: none; } }
+.tnav-btn {
+  font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 8px;
+  color: rgba(223,226,235,0.5); transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+}
+.tnav-btn:hover { color: var(--on-surface); background: var(--sc); }
+.tnav-btn.active { color: var(--primary); background: rgba(162,201,255,0.12); }
+.tnav-badge {
+  font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 99px;
+  background: rgba(255,180,171,0.18); color: var(--error);
+}
+.tnav-badge.live { background: rgba(103,223,112,0.18); color: var(--tertiary); }
+
+/* Header right */
+.header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.countdown-box {
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--sc-lowest); border: 1px solid rgba(65,71,82,0.25);
+  padding: 3px 10px; border-radius: 8px;
+}
+@media(max-width:480px){ .countdown-box { display: none; } }
+.countdown-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-sv); }
+#countdown { font-size: 13px; font-weight: 700; color: var(--primary); font-family: ui-monospace, monospace; }
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--on-sv); flex-shrink: 0; transition: background 0.3s;
+}
+.status-dot.green { background: var(--tertiary); }
+.status-dot.yellow { background: #facc15; animation: pulse 1s ease-in-out infinite; }
+#statusText { font-size: 11px; color: var(--on-sv); }
+@media(max-width:480px){ #statusText { display: none; } }
+.icon-btn { color: var(--on-sv); padding: 4px; border-radius: 8px; transition: color 0.15s; display: flex; align-items: center; }
+.icon-btn:hover { color: var(--primary); }
+.icon-btn.active { color: var(--tertiary); }
+.scan-btn {
+  background: var(--primary-c); color: var(--on-primary);
+  padding: 7px 16px; border-radius: 99px; font-size: 13px; font-weight: 700;
+  transition: all 0.15s; white-space: nowrap;
+}
+.scan-btn:hover { filter: brightness(1.1); }
+.scan-btn:active { transform: scale(0.96); }
+.scan-btn:disabled { opacity: 0.6; }
+
+/* Progress bar */
+#progressWrap { width: 100%; height: 2px; background: var(--sc-highest); display: none; }
+#progressBar  { height: 100%; background: var(--primary); transition: width 0.3s; }
+
+/* ═══ BODY LAYOUT ═════════════════════════════════════════════ */
+.body-layout { display: flex; padding-top: 57px; min-height: 100vh; }
+
+/* Sidebar */
+aside {
+  width: 240px; flex-shrink: 0;
+  background: var(--sc-low); border-right: 1px solid rgba(65,71,82,0.15);
+  display: flex; flex-direction: column;
+  position: sticky; top: 57px; height: calc(100vh - 57px); overflow-y: auto;
+}
+@media(max-width:1024px){ aside { display: none; } }
+
+.sidebar-brand { padding: 20px 20px 12px; }
+.sidebar-brand h2 { font-size: 18px; font-weight: 900; color: var(--primary); }
+.sidebar-brand p { font-size: 9px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(192,199,212,0.4); font-weight: 700; margin-top: 2px; }
+.sidebar-nav { flex: 1; padding: 4px 10px; display: flex; flex-direction: column; gap: 2px; }
+.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; border-radius: 8px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: rgba(223,226,235,0.45); transition: all 0.15s; text-align: left; width: 100%;
+}
+.nav-link:hover { background: rgba(28,32,38,0.7); color: var(--on-surface); }
+.nav-link.active {
+  background: var(--sc); color: var(--primary);
+  border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; padding-left: 11px;
+}
+.nav-link .material-symbols-outlined { font-size: 18px; }
+.nav-badge {
+  margin-left: auto; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 99px;
+  background: rgba(103,223,112,0.15); color: var(--tertiary); font-family: ui-monospace, monospace;
+}
+.sidebar-footer { padding: 12px 10px; border-top: 1px solid rgba(65,71,82,0.12); }
+.sidebar-meta { padding: 10px 18px; font-size: 10px; color: rgba(192,199,212,0.5); line-height: 1.6; border-top: 1px solid rgba(65,71,82,0.1); }
+.sidebar-meta #scanProgress { color: rgba(162,201,255,0.7); }
+
+/* ═══ MAIN CONTENT ════════════════════════════════════════════ */
+main { flex: 1; min-width: 0; background: var(--surface); overflow-y: auto; }
+.tab-page { padding: 20px 20px 80px; }
+@media(min-width:768px){ .tab-page { padding: 24px 24px 24px; } }
+.tab-page.hidden { display: none; }
+
+/* ═══ STAT CARDS ══════════════════════════════════════════════ */
+.card-grid { display: grid; gap: 10px; margin-bottom: 20px; }
+.card-grid-5 { grid-template-columns: repeat(2,1fr); }
+@media(min-width:480px){ .card-grid-5 { grid-template-columns: repeat(3,1fr); } }
+@media(min-width:900px){ .card-grid-5 { grid-template-columns: repeat(5,1fr); } }
+.card-grid-8 { grid-template-columns: repeat(2,1fr); }
+@media(min-width:640px){ .card-grid-8 { grid-template-columns: repeat(4,1fr); } }
+@media(min-width:1280px){ .card-grid-8 { grid-template-columns: repeat(8,1fr); } }
+
+.stat-card {
+  background: var(--sc-low); border: 1px solid rgba(65,71,82,0.12);
+  padding: 14px 14px 12px; border-radius: 10px;
+}
+.stat-card .label {
+  font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--on-sv); margin-bottom: 6px;
+}
+.stat-card .value { font-size: 22px; font-weight: 900; font-family: ui-monospace, monospace; color: var(--on-surface); }
+.stat-card.border-primary { border-bottom: 2px solid rgba(162,201,255,0.25); }
+.stat-card.border-tertiary { border-bottom: 2px solid rgba(103,223,112,0.3); }
+.stat-card.border-error { border-bottom: 2px solid rgba(255,180,171,0.3); }
+.stat-card.border-secondary { border-bottom: 2px solid rgba(216,186,255,0.3); }
+.stat-card.border-outline { border-bottom: 2px solid rgba(65,71,82,0.25); }
+.stat-card .sub { font-size: 9px; color: var(--on-sv); margin-top: 4px; }
+
+/* compact stat card for sim pages */
+.stat-card-sm {
+  background: var(--sc); border-radius: 8px; padding: 10px 12px;
+}
+.stat-card-sm .label {
+  font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--on-sv); margin-bottom: 4px;
+}
+.stat-card-sm .value { font-size: 18px; font-weight: 900; font-family: ui-monospace, monospace; }
+
+/* ═══ LEGEND ══════════════════════════════════════════════════ */
+.legend { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+.legend-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-sv); margin-right: 4px; }
+.badge {
+  display: inline-block; padding: 2px 7px; border-radius: 99px;
+  font-size: 10px; font-weight: 900; border: 1px solid transparent;
+}
+.badge-buy   { background: rgba(103,223,112,0.14); color: var(--tertiary); border-color: rgba(103,223,112,0.25); }
+.badge-hold  { background: var(--sc-highest); color: #67df70; border-color: rgba(65,71,82,0.2); }
+.badge-sell  { background: rgba(255,180,171,0.1); color: var(--error); border-color: rgba(255,180,171,0.2); }
+.badge-shold { background: var(--sc-highest); color: rgba(255,180,171,0.5); border-color: rgba(255,180,171,0.15); }
+.badge-na    { background: var(--sc-highest); color: rgba(192,199,212,0.35); border-color: rgba(65,71,82,0.12); }
+
+/* ═══ SCANNER TABLE ═══════════════════════════════════════════ */
+.scan-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.scan-section-header .title { font-size: 13px; font-weight: 800; }
+.scan-section-header .sub   { font-size: 10px; color: var(--on-sv); }
+.scan-grid { display: grid; gap: 20px; margin-bottom: 20px; }
+@media(min-width:1280px){ .scan-grid { grid-template-columns: 1fr 1fr; } }
+
+.table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid rgba(65,71,82,0.12); }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+thead tr { background: rgba(38,42,49,0.4); border-bottom: 1px solid rgba(65,71,82,0.12); }
+th { padding: 10px 12px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 900; color: var(--on-sv); white-space: nowrap; }
+td { padding: 10px 12px; font-size: 12px; white-space: nowrap; }
+tbody tr { border-bottom: 1px solid rgba(65,71,82,0.06); transition: background 0.1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(49,53,60,0.35); }
+td.num { font-family: ui-monospace, monospace; }
+.coin-cell { font-weight: 800; font-size: 13px; }
+.coin-primary   { color: var(--primary); }
+.coin-secondary { color: var(--secondary); }
+.empty-state { padding: 28px; text-align: center; font-size: 13px; color: var(--on-sv); }
+.tv-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: 6px; font-size: 9px; font-weight: 700;
+  background: var(--sc-highest); border: 1px solid rgba(65,71,82,0.25); color: var(--primary);
+  transition: background 0.12s;
+}
+.tv-btn:hover { background: var(--sc-high); }
+.tv-btn svg { width: 8px; height: 8px; }
+.trade-win  { border-left: 2px solid var(--tertiary); }
+.trade-loss { border-left: 2px solid var(--error); }
+
+/* ═══ CONTROLS BAR ════════════════════════════════════════════ */
+.controls-bar {
+  background: var(--sc-low); border: 1px solid rgba(65,71,82,0.12);
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 18px;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+}
+.controls-left { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.input-group label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-sv); margin-bottom: 5px; }
+.input-group input[type=number] {
+  background: var(--sc-lowest); border: 1px solid rgba(65,71,82,0.22); border-radius: 8px;
+  color: var(--on-surface); font-size: 13px; font-weight: 700; padding: 7px 12px; width: 110px;
+  font-family: ui-monospace, monospace;
+}
+.input-group input[type=number]:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(162,201,255,0.12); }
+.input-group input:disabled { opacity: 0.5; }
+.strategy-tag {
+  font-size: 11px; background: var(--sc-highest); border-radius: 6px; padding: 8px 12px;
+  color: var(--on-sv); border: 1px solid rgba(65,71,82,0.12);
+}
+.strategy-tag b { color: var(--primary); }
+@media(max-width:640px){ .strategy-tag { display: none; } }
+.controls-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pill {
+  padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 900;
+  background: var(--sc-highest); color: var(--on-sv); border: 1px solid rgba(65,71,82,0.25);
+}
+.pill.live-primary  { background: rgba(103,223,112,0.18); color: var(--tertiary); border-color: rgba(103,223,112,0.3); }
+.pill.live-secondary{ background: rgba(216,186,255,0.15); color: var(--secondary); border-color: rgba(216,186,255,0.3); }
+.btn-group { display: flex; align-items: center; gap: 3px; background: var(--sc-highest); border-radius: 10px; padding: 4px; }
+.btn-start-primary {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--tertiary); color: var(--on-tertiary);
+  padding: 6px 16px; border-radius: 7px; font-size: 11px; font-weight: 700; transition: all 0.15s;
+}
+.btn-start-primary:hover { filter: brightness(1.08); }
+.btn-start-primary:active { transform: scale(0.96); }
+.btn-start-secondary {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--secondary); color: #1a003a;
+  padding: 6px 16px; border-radius: 7px; font-size: 11px; font-weight: 700; transition: all 0.15s;
+}
+.btn-start-secondary:hover { filter: brightness(1.08); }
+.btn-start-secondary:active { transform: scale(0.96); }
+.btn-stop {
+  color: var(--error); padding: 6px 12px; border-radius: 7px; font-size: 11px; font-weight: 700; transition: background 0.12s;
+}
+.btn-stop:hover { background: rgba(255,180,171,0.1); }
+.btn-reset { color: var(--on-sv); padding: 6px 12px; border-radius: 7px; font-size: 11px; font-weight: 700; transition: background 0.12s; }
+.btn-reset:hover { background: rgba(65,71,82,0.2); }
+#simStartedAt, #memeStartedAt { font-size: 10px; color: var(--on-sv); }
+
+/* ═══ SECTION HEADER ══════════════════════════════════════════ */
+.section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.section-dot { width: 6px; height: 6px; border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
+.section-dot.primary  { background: var(--primary); }
+.section-dot.secondary{ background: var(--secondary); }
+.section-title { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; }
+.tables-wrap { display: flex; flex-direction: column; gap: 20px; }
+.disclaimer { text-align: center; font-size: 10px; color: rgba(192,199,212,0.25); padding: 8px 0; }
+
+/* ═══ MEME PAGE HEADER ════════════════════════════════════════ */
+.meme-page-header { margin-bottom: 18px; }
+.meme-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(93,45,156,0.25); color: var(--secondary); border: 1px solid rgba(216,186,255,0.2);
+  font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em;
+  padding: 3px 10px; border-radius: 6px; margin-bottom: 8px;
+}
+.meme-title { font-size: 16px; font-weight: 800; color: var(--secondary); }
+.meme-title span { color: rgba(192,199,212,0.35); font-weight: 400; font-size: 13px; }
+.meme-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--secondary); animation: pulse 2s ease-in-out infinite; }
+
+/* ═══ SCANNER EMPTY ═══════════════════════════════════════════ */
+.scanner-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 12px; color: var(--on-sv); }
+.scanner-placeholder .material-symbols-outlined { font-size: 52px; opacity: 0.25; }
+.scanner-placeholder p { font-size: 13px; }
+
+/* ═══ MOBILE BOTTOM NAV ══════════════════════════════════════ */
+.mobile-nav {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(38,42,49,0.92); backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(65,71,82,0.15);
+  padding: 6px 8px 8px;
+  justify-content: space-around; align-items: center;
+}
+@media(max-width:640px){ .mobile-nav { display: flex; } }
+.mnav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 16px; color: var(--on-sv); transition: color 0.15s; }
+.mnav-btn.active { color: var(--primary); }
+.mnav-btn .material-symbols-outlined { font-size: 22px; }
+.mnav-btn span:last-child { font-size: 10px; font-weight: 700; }
+
+/* ═══ TOAST ═══════════════════════════════════════════════════ */
+#toast {
+  position: fixed; bottom: 80px; right: 16px; z-index: 9999;
+  background: var(--sc-high); border: 1px solid rgba(103,223,112,0.25);
+  border-radius: 10px; padding: 14px 16px; max-width: 300px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5); display: none;
+}
+@media(min-width:640px){ #toast { bottom: 20px; right: 20px; } }
+#toastTitle { font-size: 13px; font-weight: 700; color: var(--tertiary); margin-bottom: 4px; }
+#toastBody  { font-size: 11px; color: var(--on-sv); }
+
+/* ═══ PNL COLORS ══════════════════════════════════════════════ */
+.pnl-pos { color: var(--tertiary); }
+.pnl-neg { color: var(--error); }
+.pnl-neu { color: var(--on-sv); }
 </style>
 </head>
-<body class="bg-background text-on-surface">
+<body>
+<div id="app">
 
 <!-- ═══ HEADER ═══════════════════════════════════════════════ -->
-<header class="fixed top-0 w-full z-50 bg-surface-container-high/80 backdrop-blur-md shadow-xl shadow-black/40">
-  <div class="flex justify-between items-center px-4 md:px-6 py-3">
-    <div class="flex items-center gap-6">
-      <div class="flex items-center gap-2 text-lg font-bold text-on-surface">
-        <span class="w-2 h-2 bg-tertiary rounded-full animate-pulse flex-shrink-0"></span>
+<header>
+  <div class="header-inner">
+    <div style="display:flex;align-items:center;gap:20px;min-width:0">
+      <div class="brand">
+        <span class="brand-dot"></span>
         UT Bot Tarayıcı
       </div>
-      <nav class="hidden md:flex items-center gap-1">
-        <button onclick="switchTab('scanner')" id="tnav-scanner"
-          class="text-sm font-bold px-3 py-1.5 rounded-lg text-primary bg-primary/10 transition-all">Tarayıcı</button>
-        <button onclick="switchTab('sim')" id="tnav-sim"
-          class="text-sm font-bold px-3 py-1.5 rounded-lg text-on-surface/50 hover:text-on-surface hover:bg-surface-container transition-all flex items-center gap-1.5">
+      <nav class="tnav">
+        <button class="tnav-btn active" id="tnav-scanner" onclick="switchTab('scanner')">Tarayıcı</button>
+        <button class="tnav-btn" id="tnav-sim" onclick="switchTab('sim')">
           Simülasyon
-          <span id="badge-sim" class="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-error/20 text-error">KAPALI</span>
+          <span class="tnav-badge" id="badge-sim">KAPALI</span>
         </button>
-        <button onclick="switchTab('meme')" id="tnav-meme"
-          class="text-sm font-bold px-3 py-1.5 rounded-lg text-on-surface/50 hover:text-on-surface hover:bg-surface-container transition-all flex items-center gap-1.5">
+        <button class="tnav-btn" id="tnav-meme" onclick="switchTab('meme')">
           🐸 SimMEME
-          <span id="badge-meme" class="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-error/20 text-error">KAPALI</span>
+          <span class="tnav-badge" id="badge-meme">KAPALI</span>
         </button>
       </nav>
     </div>
-    <div class="flex items-center gap-3">
-      <div class="hidden sm:flex flex-col items-center bg-surface-container-lowest border border-outline-variant/20 px-3 py-1 rounded-lg">
-        <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider">Tarama</span>
-        <span id="countdown" class="mono text-sm font-bold text-primary tabular-nums">--:--</span>
+    <div class="header-right">
+      <div class="countdown-box">
+        <span class="countdown-label">Tarama</span>
+        <span id="countdown" class="mono">--:--</span>
       </div>
-      <div class="flex items-center gap-1.5 text-xs text-on-surface-variant">
-        <div class="w-2 h-2 rounded-full bg-on-surface-variant flex-shrink-0" id="sdot"></div>
-        <span id="statusText" class="hidden sm:block text-xs">Hazırlanıyor...</span>
+      <div style="display:flex;align-items:center;gap:5px">
+        <div class="status-dot" id="sdot"></div>
+        <span id="statusText">Hazırlanıyor...</span>
       </div>
-      <button id="notifBtn" onclick="toggleNotif()" class="text-on-surface-variant hover:text-primary transition-colors p-1">
-        <span class="material-symbols-outlined text-xl">notifications</span>
+      <button class="icon-btn" id="notifBtn" onclick="toggleNotif()" title="Bildirimler">
+        <span class="material-symbols-outlined" style="font-size:20px">notifications</span>
       </button>
-      <button id="scanBtn" onclick="startScan()"
-        class="bg-primary-container text-on-primary px-4 py-1.5 rounded-full text-sm font-bold active:opacity-80 active:scale-95 transition-all">
-        Şimdi Tara
-      </button>
+      <button class="scan-btn" id="scanBtn" onclick="startScan()">Şimdi Tara</button>
     </div>
   </div>
-  <div id="progressWrap" class="w-full h-0.5 bg-surface-container-highest" style="display:none">
-    <div id="progressBar" class="h-full bg-primary transition-all duration-300" style="width:0%"></div>
-  </div>
+  <div id="progressWrap"><div id="progressBar" style="width:0%"></div></div>
 </header>
 
-<!-- ═══ LAYOUT ════════════════════════════════════════════════ -->
-<div class="flex pt-[57px] min-h-screen">
+<!-- ═══ BODY ══════════════════════════════════════════════════ -->
+<div class="body-layout">
 
-  <!-- Sidebar (desktop) -->
-  <aside class="hidden lg:flex flex-col w-64 border-r border-outline-variant/15 bg-surface-container-low sticky top-[57px] h-[calc(100vh-57px)] flex-shrink-0">
-    <div class="px-6 py-5">
-      <div class="text-primary font-black text-xl">UT Bot</div>
-      <div class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/50 font-bold mt-0.5">High-Density Terminal</div>
+  <!-- Sidebar -->
+  <aside>
+    <div class="sidebar-brand">
+      <h2>UT Bot</h2>
+      <p>High-Density Terminal</p>
     </div>
-    <nav class="flex-1 px-3 space-y-1">
-      <button onclick="switchTab('scanner')" id="nav-scanner"
-        class="nav-link w-full flex items-center gap-3 px-4 py-3 bg-surface-container text-primary border-l-4 border-primary rounded-r-lg text-left transition-all duration-150">
-        <span class="material-symbols-outlined text-xl">radar</span>
-        <span class="text-[11px] uppercase tracking-wider font-bold">Tarayıcı</span>
-        <span id="badge-buy" class="ml-auto text-[10px] font-black px-1.5 py-0.5 rounded-full bg-tertiary/20 text-tertiary mono">0 BUY</span>
+    <nav class="sidebar-nav">
+      <button class="nav-link active" id="nav-scanner" onclick="switchTab('scanner')">
+        <span class="material-symbols-outlined">radar</span>
+        Tarayıcı
+        <span class="nav-badge" id="badge-buy">0 BUY</span>
       </button>
-      <button onclick="switchTab('sim')" id="nav-sim"
-        class="nav-link w-full flex items-center gap-3 px-4 py-3 text-on-surface/50 hover:bg-surface-container/60 rounded-lg text-left transition-all duration-150">
-        <span class="material-symbols-outlined text-xl">analytics</span>
-        <span class="text-[11px] uppercase tracking-wider font-bold">Simülasyon</span>
+      <button class="nav-link" id="nav-sim" onclick="switchTab('sim')">
+        <span class="material-symbols-outlined">analytics</span>
+        Simülasyon
       </button>
-      <button onclick="switchTab('meme')" id="nav-meme"
-        class="nav-link w-full flex items-center gap-3 px-4 py-3 text-on-surface/50 hover:bg-surface-container/60 rounded-lg text-left transition-all duration-150">
-        <span class="material-symbols-outlined text-xl">token</span>
-        <span class="text-[11px] uppercase tracking-wider font-bold">SimMEME</span>
-        <span class="text-base ml-1">🐸</span>
+      <button class="nav-link" id="nav-meme" onclick="switchTab('meme')">
+        <span class="material-symbols-outlined">token</span>
+        SimMEME 🐸
       </button>
     </nav>
-    <div class="px-5 py-3 border-t border-outline-variant/10 space-y-1 text-[10px] text-on-surface-variant/60">
+    <div class="sidebar-meta">
       <div id="lastScanText">—</div>
       <div id="coinCount">—</div>
-      <div id="scanProgress" class="text-primary/80"></div>
+      <div id="scanProgress"></div>
     </div>
-    <div class="px-3 pb-4 space-y-1">
-      <a class="flex items-center gap-3 px-4 py-2 text-on-surface/30 hover:text-on-surface transition-colors" href="#">
-        <span class="material-symbols-outlined text-lg">settings</span>
-        <span class="text-[10px] uppercase font-bold tracking-widest">Ayarlar</span>
-      </a>
+    <div class="sidebar-footer">
+      <button class="nav-link" style="opacity:0.35">
+        <span class="material-symbols-outlined" style="font-size:16px">settings</span>
+        Ayarlar
+      </button>
     </div>
   </aside>
 
-  <!-- Main -->
-  <main class="flex-1 overflow-y-auto bg-surface min-w-0">
+  <!-- Main content -->
+  <main>
 
-    <!-- ══ PAGE: TARAYICI ══════════════════════════════════════ -->
-    <div id="page-scanner" class="tab-page p-4 md:p-6 pb-20 md:pb-6">
+    <!-- ══ TARAYICI ═══════════════════════════════════════════ -->
+    <div id="page-scanner" class="tab-page">
       <!-- Summary cards -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
-        <div class="bg-surface-container-low border border-outline-variant/10 p-4 rounded-lg">
-          <div class="text-[10px] font-bold uppercase tracking-widest text-primary/80 mb-1">Taranan</div>
-          <div class="flex items-end justify-between">
-            <span id="cTotal" class="text-2xl font-black mono">—</span>
-            <span class="material-symbols-outlined text-primary/40 text-xl">search</span>
+      <div class="card-grid card-grid-5">
+        <div class="stat-card border-primary">
+          <div class="label">Taranan</div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <span id="cTotal" class="value mono">—</span>
+            <span class="material-symbols-outlined" style="color:rgba(162,201,255,0.35);font-size:18px">search</span>
           </div>
         </div>
-        <div class="bg-surface-container-low border border-outline-variant/10 p-4 rounded-lg">
-          <div class="text-[10px] font-bold uppercase tracking-widest text-tertiary mb-1">15m BUY 🔥</div>
-          <div class="flex items-end justify-between">
-            <span id="cAll" class="text-2xl font-black mono text-tertiary">—</span>
-            <span class="text-[10px] text-on-surface-variant">Sim açar</span>
+        <div class="stat-card border-tertiary">
+          <div class="label" style="color:var(--tertiary)">15m BUY 🔥</div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <span id="cAll" class="value mono" style="color:var(--tertiary)">—</span>
+            <span style="font-size:10px;color:var(--on-sv)">Sim açar</span>
           </div>
         </div>
-        <div class="bg-surface-container-low border border-outline-variant/10 p-4 rounded-lg">
-          <div class="text-[10px] font-bold uppercase tracking-widest mb-1" style="color:#67df70">15m HOLD</div>
-          <div class="flex items-end justify-between">
-            <span id="cPartial" class="text-2xl font-black mono" style="color:#67df70">—</span>
-            <span class="text-[10px] text-on-surface-variant">Trend devam</span>
+        <div class="stat-card">
+          <div class="label" style="color:#67df70">15m HOLD</div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <span id="cPartial" class="value mono" style="color:#67df70">—</span>
+            <span style="font-size:10px;color:var(--on-sv)">Trend devam</span>
           </div>
         </div>
-        <div class="bg-surface-container-low border border-outline-variant/10 p-4 rounded-lg">
-          <div class="text-[10px] font-bold uppercase tracking-widest text-error mb-1">15m SELL</div>
-          <div class="flex items-end justify-between">
-            <span id="cHold" class="text-2xl font-black mono text-error">—</span>
-            <span class="text-[10px] text-on-surface-variant">Sim kapar</span>
+        <div class="stat-card border-error">
+          <div class="label" style="color:var(--error)">15m SELL</div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <span id="cHold" class="value mono" style="color:var(--error)">—</span>
+            <span style="font-size:10px;color:var(--on-sv)">Sim kapar</span>
           </div>
         </div>
-        <div class="bg-surface-container-low border border-outline-variant/10 p-4 rounded-lg">
-          <div class="text-[10px] font-bold uppercase tracking-widest text-secondary mb-1">Diğer TF BUY</div>
-          <div class="flex items-end justify-between">
-            <span id="cFail" class="text-2xl font-black mono text-secondary">—</span>
-            <span class="material-symbols-outlined text-secondary/40 text-xl">bolt</span>
+        <div class="stat-card border-secondary">
+          <div class="label" style="color:var(--secondary)">Diğer TF BUY</div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <span id="cFail" class="value mono" style="color:var(--secondary)">—</span>
+            <span class="material-symbols-outlined" style="color:rgba(216,186,255,0.35);font-size:18px">bolt</span>
           </div>
         </div>
       </div>
       <!-- Legend -->
-      <div class="flex items-center gap-2 mb-5 flex-wrap">
-        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mr-1">Sinyal:</span>
-        <span class="px-2 py-0.5 bg-tertiary/15 text-tertiary rounded-full text-[10px] font-black border border-tertiary/20">BUY</span>
-        <span class="px-2 py-0.5 bg-surface-container-highest rounded-full text-[10px] font-black border border-outline-variant/20" style="color:#67df70">HOLD</span>
-        <span class="px-2 py-0.5 bg-error/10 text-error rounded-full text-[10px] font-black border border-error/20">SELL</span>
-        <span class="px-2 py-0.5 bg-surface-container-highest text-on-surface-variant rounded-full text-[10px] font-black border border-outline-variant/20">S.HOLD</span>
-        <span class="px-2 py-0.5 bg-surface-container-highest text-on-surface-variant/30 rounded-full text-[10px] font-black border border-outline-variant/10">N/A</span>
+      <div class="legend">
+        <span class="legend-label">Sinyal:</span>
+        <span class="badge badge-buy">BUY</span>
+        <span class="badge badge-hold">HOLD</span>
+        <span class="badge badge-sell">SELL</span>
+        <span class="badge badge-shold">S.HOLD</span>
+        <span class="badge badge-na">N/A</span>
+        <span style="font-size:10px;color:var(--on-sv);margin-left:6px">🔥 15m BUY — Sim pozisyon açar</span>
+        <span style="font-size:10px;color:var(--on-sv)">✅ 15m HOLD — Trend devam</span>
       </div>
-      <!-- Scan results (rendered by JS) -->
+      <!-- Results -->
       <div id="scanContent">
-        <div class="flex flex-col items-center justify-center py-20 text-on-surface-variant gap-3">
-          <span class="material-symbols-outlined text-5xl text-on-surface-variant/30">radar</span>
-          <p class="text-sm">"Şimdi Tara" butonuna basın.</p>
+        <div class="scanner-placeholder">
+          <span class="material-symbols-outlined">radar</span>
+          <p>"Şimdi Tara" butonuna basın.</p>
         </div>
       </div>
     </div>
 
-    <!-- ══ PAGE: SİMÜLASYON ═══════════════════════════════════ -->
-    <div id="page-sim" class="tab-page hidden p-4 md:p-6 pb-20 md:pb-6">
-      <!-- Controls -->
-      <div class="bg-surface-container-low rounded-lg p-4 mb-5 flex flex-wrap items-center justify-between gap-3 border border-outline-variant/10">
-        <div class="flex flex-wrap items-center gap-4">
-          <div>
-            <div class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Coin başına bütçe (USD)</div>
-            <input id="simBudget" type="number" value="1000" min="10" step="10"
-              class="bg-surface-container-lowest border border-outline-variant/20 rounded-lg mono text-sm font-bold text-on-surface focus:ring-1 focus:ring-primary py-2 px-3 w-32"/>
+    <!-- ══ SİMÜLASYON ════════════════════════════════════════ -->
+    <div id="page-sim" class="tab-page hidden">
+      <div class="controls-bar">
+        <div class="controls-left">
+          <div class="input-group">
+            <label>Coin başına bütçe (USD)</label>
+            <input id="simBudget" type="number" value="1000" min="10" step="10"/>
           </div>
-          <div class="text-[11px] bg-surface-container-highest rounded px-3 py-2 text-on-surface-variant border border-outline-variant/10 hidden sm:block">
-            Strateji: <b class="text-primary">15m BUY + 4H onay · ATR×2.5</b>
-          </div>
+          <div class="strategy-tag">Strateji: <b>15m BUY + 4H onay · ATR×2.5</b></div>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <span id="simPill" class="px-3 py-1.5 rounded-full text-xs font-black bg-surface-container-highest text-on-surface-variant border border-outline-variant/20">KAPALI</span>
-          <div class="flex items-center gap-1 bg-surface-container-highest rounded-lg p-1">
-            <button id="simStartBtn" onclick="simStart()"
-              class="flex items-center gap-1 bg-tertiary text-on-tertiary px-4 py-1.5 rounded-md text-xs font-bold hover:brightness-110 active:scale-95 transition-all">
-              <span class="material-symbols-outlined text-sm" style="font-variation-settings:'FILL' 1">play_arrow</span>Başlat
+        <div class="controls-right">
+          <span id="simPill" class="pill">KAPALI</span>
+          <div class="btn-group">
+            <button id="simStartBtn" onclick="simStart()" class="btn-start-primary">
+              <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 1">play_arrow</span>
+              Başlat
             </button>
-            <button id="simStopBtn" onclick="simStop()" style="display:none"
-              class="text-error px-3 py-1.5 rounded-md text-xs font-bold hover:bg-error/10 transition-all">⏹ Durdur</button>
-            <button onclick="simReset()"
-              class="text-on-surface-variant px-3 py-1.5 rounded-md text-xs font-bold hover:bg-surface-variant transition-all">↺ Reset</button>
+            <button id="simStopBtn" onclick="simStop()" class="btn-stop" style="display:none">⏹ Durdur</button>
+            <button onclick="simReset()" class="btn-reset">↺ Reset</button>
           </div>
-          <span id="simStartedAt" class="text-[10px] text-on-surface-variant"></span>
+          <span id="simStartedAt"></span>
         </div>
       </div>
-      <!-- Stats grid -->
-      <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-5">
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-primary/20">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Toplam İşlem</div>
-          <div id="sTrades" class="text-xl font-black mono">0</div>
+      <!-- Stats -->
+      <div class="card-grid card-grid-8" style="margin-bottom:18px">
+        <div class="stat-card-sm border-primary" style="border-bottom:2px solid rgba(162,201,255,0.2)">
+          <div class="label">Toplam İşlem</div>
+          <div id="sTrades" class="value mono">0</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-tertiary/30">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Kazanan</div>
-          <div id="sWins" class="text-xl font-black mono text-tertiary">0</div>
+        <div class="stat-card-sm border-tertiary" style="border-bottom:2px solid rgba(103,223,112,0.25)">
+          <div class="label">Kazanan</div>
+          <div id="sWins" class="value mono" style="color:var(--tertiary)">0</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-error/30">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Kaybeden</div>
-          <div id="sLosses" class="text-xl font-black mono text-error">0</div>
+        <div class="stat-card-sm border-error" style="border-bottom:2px solid rgba(255,180,171,0.25)">
+          <div class="label">Kaybeden</div>
+          <div id="sLosses" class="value mono" style="color:var(--error)">0</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-primary/20">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Win Rate</div>
-          <div id="sWinRate" class="text-xl font-black mono">—</div>
+        <div class="stat-card-sm border-primary" style="border-bottom:2px solid rgba(162,201,255,0.2)">
+          <div class="label">Win Rate</div>
+          <div id="sWinRate" class="value mono">—</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-tertiary/30">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Gerçekleşen K/Z</div>
-          <div id="sRealPnl" class="text-xl font-black mono">$0.00</div>
+        <div class="stat-card-sm border-tertiary" style="border-bottom:2px solid rgba(103,223,112,0.25)">
+          <div class="label">Gerçekleşen K/Z</div>
+          <div id="sRealPnl" class="value mono">$0.00</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-outline-variant/20">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Açık K/Z</div>
-          <div id="sUnrealPnl" class="text-xl font-black mono">$0.00</div>
+        <div class="stat-card-sm" style="border-bottom:2px solid rgba(65,71,82,0.2)">
+          <div class="label">Açık K/Z</div>
+          <div id="sUnrealPnl" class="value mono">$0.00</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-tertiary/30">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Toplam K/Z</div>
-          <div id="sTotalPnl" class="text-xl font-black mono">$0.00</div>
-          <div id="sTotalSub" class="text-[9px] text-on-surface-variant mt-0.5"></div>
+        <div class="stat-card-sm border-tertiary" style="border-bottom:2px solid rgba(103,223,112,0.25)">
+          <div class="label">Toplam K/Z</div>
+          <div id="sTotalPnl" class="value mono">$0.00</div>
+          <div id="sTotalSub" class="sub"></div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-secondary/30">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Açık Pozisyon</div>
-          <div id="sOpenPos" class="text-xl font-black mono text-secondary">0</div>
+        <div class="stat-card-sm border-secondary" style="border-bottom:2px solid rgba(216,186,255,0.25)">
+          <div class="label">Açık Pozisyon</div>
+          <div id="sOpenPos" class="value mono" style="color:var(--secondary)">0</div>
         </div>
       </div>
       <!-- Tables -->
-      <div class="space-y-5">
+      <div class="tables-wrap">
         <div>
-          <div class="flex items-center gap-2 mb-3">
-            <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-            <span class="text-xs font-black uppercase tracking-widest">Açık Pozisyonlar</span>
+          <div class="section-header">
+            <span class="section-dot primary"></span>
+            <span class="section-title">Açık Pozisyonlar</span>
           </div>
-          <div id="simPositions" class="bg-surface-container-low rounded-lg border border-outline-variant/10 overflow-hidden">
-            <p class="p-6 text-center text-sm text-on-surface-variant">Açık pozisyon yok — BUY sinyali bekleniyor.</p>
+          <div id="simPositions" class="table-wrap">
+            <p class="empty-state">Açık pozisyon yok — BUY sinyali bekleniyor.</p>
           </div>
         </div>
         <div>
-          <div class="flex items-center gap-2 mb-3">
-            <span class="material-symbols-outlined text-sm text-on-surface-variant">history</span>
-            <span class="text-xs font-black uppercase tracking-widest">İşlem Geçmişi</span>
+          <div class="section-header">
+            <span class="material-symbols-outlined" style="font-size:14px;color:var(--on-sv)">history</span>
+            <span class="section-title">İşlem Geçmişi</span>
           </div>
-          <div id="simTrades" class="bg-surface-container-low rounded-lg border border-outline-variant/10 overflow-hidden">
-            <p class="p-6 text-center text-sm text-on-surface-variant">Henüz kapalı işlem yok.</p>
+          <div id="simTrades" class="table-wrap">
+            <p class="empty-state">Henüz kapalı işlem yok.</p>
           </div>
         </div>
-        <p class="text-center text-[10px] text-on-surface-variant/30 py-2">⚠️ Simülasyon yalnızca sekme açıkken çalışır. Gerçek para içermez.</p>
+        <p class="disclaimer">⚠️ Simülasyon yalnızca sekme açıkken çalışır. Gerçek para içermez.</p>
       </div>
     </div>
 
-    <!-- ══ PAGE: SimMEME ══════════════════════════════════════ -->
-    <div id="page-meme" class="tab-page hidden p-4 md:p-6 pb-20 md:pb-6">
-      <!-- Header -->
-      <div class="mb-5">
-        <div class="flex items-center gap-2 mb-2 flex-wrap">
-          <span class="bg-secondary-container/30 text-secondary-fixed-dim text-[10px] font-black px-2 py-0.5 rounded border border-secondary-fixed-dim/20 uppercase">SimMEME Engine</span>
-          <span class="flex items-center gap-1 text-[10px] font-bold text-secondary">
-            <span class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></span>MEME TARAMASI
+    <!-- ══ SimMEME ═════════════════════════════════════════════ -->
+    <div id="page-meme" class="tab-page hidden">
+      <div class="meme-page-header">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <span class="meme-tag">SimMEME Engine</span>
+          <span style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:var(--secondary)">
+            <span class="meme-live-dot"></span> MEME TARAMASI
           </span>
         </div>
-        <h1 class="text-lg font-extrabold text-secondary">
-          🐸 DOGE · SHIB · PEPE · BONK · FLOKI · WIF <span class="text-on-surface-variant/40 font-normal text-sm">ve daha fazlası</span>
-        </h1>
+        <div class="meme-title">🐸 DOGE · SHIB · PEPE · BONK · FLOKI · WIF <span>ve daha fazlası</span></div>
       </div>
-      <!-- Controls -->
-      <div class="bg-surface-container-low rounded-lg p-4 mb-5 flex flex-wrap items-center justify-between gap-3 border border-outline-variant/10">
-        <div class="flex flex-wrap items-center gap-4">
-          <div>
-            <div class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Coin başına bütçe (USD)</div>
-            <input id="memeBudget" type="number" value="1000" min="10" step="10"
-              class="bg-surface-container-lowest border border-outline-variant/20 rounded-lg mono text-sm font-bold text-on-surface focus:ring-1 focus:ring-secondary py-2 px-3 w-32"/>
+      <div class="controls-bar">
+        <div class="controls-left">
+          <div class="input-group">
+            <label>Coin başına bütçe (USD)</label>
+            <input id="memeBudget" type="number" value="1000" min="10" step="10"/>
           </div>
+          <div class="strategy-tag">Strateji: <b style="color:var(--secondary)">15m BUY · ATR×2.5 · Sadece MEME</b></div>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <span id="memePill" class="px-3 py-1.5 rounded-full text-xs font-black bg-surface-container-highest text-on-surface-variant border border-outline-variant/20">KAPALI</span>
-          <div class="flex items-center gap-1 bg-surface-container-highest rounded-lg p-1">
-            <button id="memeStartBtn" onclick="memeSimStart()"
-              class="flex items-center gap-1 bg-secondary text-on-secondary px-4 py-1.5 rounded-md text-xs font-bold hover:brightness-110 active:scale-95 transition-all">
-              <span class="material-symbols-outlined text-sm" style="font-variation-settings:'FILL' 1">play_arrow</span>Başlat
+        <div class="controls-right">
+          <span id="memePill" class="pill">KAPALI</span>
+          <div class="btn-group">
+            <button id="memeStartBtn" onclick="memeSimStart()" class="btn-start-secondary">
+              <span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 1">play_arrow</span>
+              Başlat
             </button>
-            <button id="memeStopBtn" onclick="memeSimStop()" style="display:none"
-              class="text-error px-3 py-1.5 rounded-md text-xs font-bold hover:bg-error/10 transition-all">⏹ Durdur</button>
-            <button onclick="memeSimReset()"
-              class="text-on-surface-variant px-3 py-1.5 rounded-md text-xs font-bold hover:bg-surface-variant transition-all">↺ Reset</button>
+            <button id="memeStopBtn" onclick="memeSimStop()" class="btn-stop" style="display:none">⏹ Durdur</button>
+            <button onclick="memeSimReset()" class="btn-reset">↺ Reset</button>
           </div>
-          <span id="memeStartedAt" class="text-[10px] text-on-surface-variant"></span>
+          <span id="memeStartedAt"></span>
         </div>
       </div>
-      <!-- Stats grid -->
-      <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-5">
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-primary/20">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Toplam İşlem</div>
-          <div id="mTrades" class="text-xl font-black mono">0</div>
+      <!-- Stats -->
+      <div class="card-grid card-grid-8" style="margin-bottom:18px">
+        <div class="stat-card-sm" style="border-bottom:2px solid rgba(162,201,255,0.2)">
+          <div class="label">Toplam İşlem</div>
+          <div id="mTrades" class="value mono">0</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-tertiary/30">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Kazanan</div>
-          <div id="mWins" class="text-xl font-black mono text-tertiary">0</div>
+        <div class="stat-card-sm" style="border-bottom:2px solid rgba(103,223,112,0.25)">
+          <div class="label">Kazanan</div>
+          <div id="mWins" class="value mono" style="color:var(--tertiary)">0</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-error/30">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Kaybeden</div>
-          <div id="mLosses" class="text-xl font-black mono text-error">0</div>
+        <div class="stat-card-sm" style="border-bottom:2px solid rgba(255,180,171,0.25)">
+          <div class="label">Kaybeden</div>
+          <div id="mLosses" class="value mono" style="color:var(--error)">0</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-primary/20">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Win Rate</div>
-          <div id="mWinRate" class="text-xl font-black mono">—</div>
+        <div class="stat-card-sm" style="border-bottom:2px solid rgba(162,201,255,0.2)">
+          <div class="label">Win Rate</div>
+          <div id="mWinRate" class="value mono">—</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-tertiary/30">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Gerçekleşen K/Z</div>
-          <div id="mRealPnl" class="text-xl font-black mono">$0.00</div>
+        <div class="stat-card-sm" style="border-bottom:2px solid rgba(103,223,112,0.25)">
+          <div class="label">Gerçekleşen K/Z</div>
+          <div id="mRealPnl" class="value mono">$0.00</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-outline-variant/20">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Açık K/Z</div>
-          <div id="mUnrealPnl" class="text-xl font-black mono">$0.00</div>
+        <div class="stat-card-sm" style="border-bottom:2px solid rgba(65,71,82,0.2)">
+          <div class="label">Açık K/Z</div>
+          <div id="mUnrealPnl" class="value mono">$0.00</div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-tertiary/30">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Toplam K/Z</div>
-          <div id="mTotalPnl" class="text-xl font-black mono">$0.00</div>
-          <div id="mTotalSub" class="text-[9px] text-on-surface-variant mt-0.5"></div>
+        <div class="stat-card-sm" style="border-bottom:2px solid rgba(216,186,255,0.25)">
+          <div class="label">Toplam K/Z</div>
+          <div id="mTotalPnl" class="value mono">$0.00</div>
+          <div id="mTotalSub" class="sub"></div>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border-b-2 border-secondary/30">
-          <div class="text-[9px] text-on-surface-variant font-black uppercase tracking-widest mb-1">Açık Pozisyon</div>
-          <div id="mOpenPos" class="text-xl font-black mono text-secondary">0</div>
+        <div class="stat-card-sm" style="border-bottom:2px solid rgba(216,186,255,0.25)">
+          <div class="label">Açık Pozisyon</div>
+          <div id="mOpenPos" class="value mono" style="color:var(--secondary)">0</div>
         </div>
       </div>
       <!-- Tables -->
-      <div class="space-y-5">
+      <div class="tables-wrap">
         <div>
-          <div class="flex items-center gap-2 mb-3">
-            <span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
-            <span class="text-xs font-black uppercase tracking-widest">Açık Pozisyonlar</span>
+          <div class="section-header">
+            <span class="section-dot secondary"></span>
+            <span class="section-title">Açık Pozisyonlar</span>
           </div>
-          <div id="memePositions" class="bg-surface-container-low rounded-lg border border-outline-variant/10 overflow-hidden">
-            <p class="p-6 text-center text-sm text-on-surface-variant">Açık pozisyon yok — BUY sinyali bekleniyor.</p>
+          <div id="memePositions" class="table-wrap">
+            <p class="empty-state">Açık pozisyon yok — BUY sinyali bekleniyor.</p>
           </div>
         </div>
         <div>
-          <div class="flex items-center gap-2 mb-3">
-            <span class="material-symbols-outlined text-sm text-on-surface-variant">history</span>
-            <span class="text-xs font-black uppercase tracking-widest">İşlem Geçmişi</span>
+          <div class="section-header">
+            <span class="material-symbols-outlined" style="font-size:14px;color:var(--on-sv)">history</span>
+            <span class="section-title">İşlem Geçmişi</span>
           </div>
-          <div id="memeTrades" class="bg-surface-container-low rounded-lg border border-outline-variant/10 overflow-hidden">
-            <p class="p-6 text-center text-sm text-on-surface-variant">Henüz kapalı işlem yok.</p>
+          <div id="memeTrades" class="table-wrap">
+            <p class="empty-state">Henüz kapalı işlem yok.</p>
           </div>
         </div>
-        <p class="text-center text-[10px] text-on-surface-variant/30 py-2">⚠️ Simülasyon yalnızca sekme açıkken çalışır. Meme coinler yüksek volatiliteye sahiptir. Gerçek para içermez.</p>
+        <p class="disclaimer">⚠️ Simülasyon yalnızca sekme açıkken çalışır. Meme coinler yüksek volatiliteye sahiptir. Gerçek para içermez.</p>
       </div>
     </div>
 
@@ -417,26 +665,28 @@ body { font-family: 'Inter', sans-serif; }
 </div>
 
 <!-- Mobile bottom nav -->
-<nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-high/90 backdrop-blur-md border-t border-outline-variant/15 px-2 py-2 flex justify-around items-center z-50">
-  <button onclick="switchTab('scanner')" id="mnav-scanner" class="flex flex-col items-center gap-0.5 text-primary px-4 py-1">
-    <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'FILL' 1">radar</span>
-    <span class="text-[10px] font-bold">Tarayıcı</span>
+<nav class="mobile-nav">
+  <button class="mnav-btn active" id="mnav-scanner" onclick="switchTab('scanner')">
+    <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">radar</span>
+    <span>Tarayıcı</span>
   </button>
-  <button onclick="switchTab('sim')" id="mnav-sim" class="flex flex-col items-center gap-0.5 text-on-surface-variant px-4 py-1">
-    <span class="material-symbols-outlined text-2xl">analytics</span>
-    <span class="text-[10px] font-bold">Simülasyon</span>
+  <button class="mnav-btn" id="mnav-sim" onclick="switchTab('sim')">
+    <span class="material-symbols-outlined">analytics</span>
+    <span>Simülasyon</span>
   </button>
-  <button onclick="switchTab('meme')" id="mnav-meme" class="flex flex-col items-center gap-0.5 text-on-surface-variant px-4 py-1">
-    <span class="material-symbols-outlined text-2xl">token</span>
-    <span class="text-[10px] font-bold">SimMEME</span>
+  <button class="mnav-btn" id="mnav-meme" onclick="switchTab('meme')">
+    <span class="material-symbols-outlined">token</span>
+    <span>SimMEME</span>
   </button>
 </nav>
 
 <!-- Toast -->
-<div id="toast" class="fixed bottom-20 right-4 md:bottom-5 md:right-5 bg-surface-container-high border border-tertiary/30 rounded-lg p-4 max-w-xs z-[9999] shadow-2xl shadow-black/60 hidden">
-  <div id="toastTitle" class="font-bold text-tertiary text-sm mb-1"></div>
-  <div id="toastBody" class="text-[11px] text-on-surface-variant"></div>
+<div id="toast">
+  <div id="toastTitle"></div>
+  <div id="toastBody"></div>
 </div>
+
+</div><!-- #app -->
 
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -501,33 +751,25 @@ function saveMemeSim()    { try { localStorage.setItem(MEME_SIM_KEY, JSON.string
 function switchTab(name) {
   currentTab = name;
 
-  // Sidebar active state
-  document.querySelectorAll('.nav-link').forEach(el => {
-    el.classList.remove('bg-surface-container','text-primary','border-l-4','border-primary','rounded-r-lg');
-    el.classList.add('text-on-surface/50','hover:bg-surface-container/60','rounded-lg');
-  });
+  // Sidebar
+  document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
   const navEl = document.getElementById('nav-' + name);
-  if (navEl) {
-    navEl.classList.add('bg-surface-container','text-primary','border-l-4','border-primary','rounded-r-lg');
-    navEl.classList.remove('text-on-surface/50','hover:bg-surface-container/60','rounded-lg');
-  }
+  if (navEl) navEl.classList.add('active');
 
   // Top nav
-  ['scanner','sim','meme'].forEach(n => {
-    const t = document.getElementById('tnav-' + n);
-    if (!t) return;
-    if (n === name) { t.classList.add('text-primary','bg-primary/10'); t.classList.remove('text-on-surface/50','bg-transparent'); }
-    else            { t.classList.remove('text-primary','bg-primary/10'); t.classList.add('text-on-surface/50','bg-transparent'); }
-  });
+  document.querySelectorAll('.tnav-btn').forEach(el => el.classList.remove('active'));
+  const tEl = document.getElementById('tnav-' + name);
+  if (tEl) tEl.classList.add('active');
 
   // Mobile nav
-  document.querySelectorAll('[id^="mnav-"]').forEach(el => { el.classList.remove('text-primary'); el.classList.add('text-on-surface-variant'); });
+  document.querySelectorAll('.mnav-btn').forEach(el => el.classList.remove('active'));
   const mEl = document.getElementById('mnav-' + name);
-  if (mEl) { mEl.classList.add('text-primary'); mEl.classList.remove('text-on-surface-variant'); }
+  if (mEl) mEl.classList.add('active');
 
   // Pages
   document.querySelectorAll('.tab-page').forEach(p => p.classList.add('hidden'));
-  document.getElementById('page-' + name)?.classList.remove('hidden');
+  const page = document.getElementById('page-' + name);
+  if (page) page.classList.remove('hidden');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -580,7 +822,8 @@ async function startScan() {
   scanning=true;
   const btn=document.getElementById('scanBtn');
   btn.disabled=true; btn.textContent='Taranıyor...';
-  document.getElementById('sdot').className='w-2 h-2 rounded-full bg-yellow-400 animate-pulse flex-shrink-0';
+  const sdot=document.getElementById('sdot');
+  sdot.className='status-dot yellow';
   document.getElementById('statusText').textContent='Taranıyor...';
   document.getElementById('progressWrap').style.display='';
   document.getElementById('scanProgress').textContent='';
@@ -614,7 +857,7 @@ async function startScan() {
 
   const now=Date.now(); nextScanTs=now/1000+900;
   document.getElementById('progressWrap').style.display='none';
-  document.getElementById('sdot').className='w-2 h-2 rounded-full bg-tertiary flex-shrink-0';
+  sdot.className='status-dot green';
   document.getElementById('statusText').textContent='Güncel';
   document.getElementById('lastScanText').textContent='Son: '+new Date(now).toLocaleTimeString('tr-TR');
   document.getElementById('coinCount').textContent=results.length+' coin';
@@ -637,50 +880,39 @@ function fmtP(p) {
 
 function sigBadge(sig) {
   const map={
-    BUY:      ['bg-tertiary/15 text-tertiary border border-tertiary/25','BUY'],
-    BUY_HOLD: ['bg-surface-container-highest border border-outline-variant/15','HOLD'],
-    SELL:     ['bg-error/10 text-error border border-error/20','SELL'],
-    SELL_HOLD:['bg-surface-container-highest text-error/50 border border-error/15','S.HOLD'],
-    NEUTRAL:  ['bg-surface-container-highest text-on-surface-variant border border-outline-variant/10','NÖTR'],
-    NO_DATA:  ['bg-surface-container-highest text-on-surface-variant/25 border border-outline-variant/10','N/A'],
+    BUY:      ['badge badge-buy','BUY'],
+    BUY_HOLD: ['badge badge-hold','HOLD'],
+    SELL:     ['badge badge-sell','SELL'],
+    SELL_HOLD:['badge badge-shold','S.HOLD'],
+    NEUTRAL:  ['badge badge-na','NÖTR'],
+    NO_DATA:  ['badge badge-na','N/A'],
   };
   const [cls,lbl]=map[sig]||map.NO_DATA;
-  const holdColor=sig==='BUY_HOLD'?'style="color:#67df70"':'';
-  return `<span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-black ${cls}" ${holdColor}>${lbl}</span>`;
+  return `<span class="${cls}">${lbl}</span>`;
 }
 
 function tvBtn(coin) {
   const url=`https://www.tradingview.com/chart/?symbol=BINANCE:${coin}USDT&interval=15`;
-  return `<a href="${url}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-1 rounded bg-surface-container-highest border border-outline-variant/20 text-primary text-[9px] font-bold hover:bg-surface-container transition-colors whitespace-nowrap">
-    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>TV
+  return `<a href="${url}" target="_blank" rel="noopener" class="tv-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>TV
   </a>`;
 }
 
 function scanTable(rows) {
-  if(!rows.length) return `<div class="p-5 text-center text-sm text-on-surface-variant">Bu kategoride coin yok.</div>`;
-  return `<div class="overflow-x-auto rounded-lg border border-outline-variant/10">
-    <table class="w-full text-left">
-      <thead class="bg-surface-container-high/30 border-b border-outline-variant/10">
-        <tr>
-          <th class="px-3 py-3 text-[9px] uppercase tracking-wider font-black text-on-surface-variant">#</th>
-          <th class="px-3 py-3 text-[9px] uppercase tracking-wider font-black text-on-surface-variant">Coin</th>
-          <th class="px-3 py-3 text-[9px] uppercase tracking-wider font-black text-on-surface-variant">Fiyat</th>
-          <th class="px-3 py-3 text-[9px] uppercase tracking-wider font-black text-on-surface-variant">15m</th>
-          <th class="px-3 py-3 text-[9px] uppercase tracking-wider font-black text-on-surface-variant">1H</th>
-          <th class="px-3 py-3 text-[9px] uppercase tracking-wider font-black text-on-surface-variant">2H</th>
-          <th class="px-3 py-3 text-[9px] uppercase tracking-wider font-black text-on-surface-variant">4H</th>
-          <th class="px-3 py-3 text-[9px] uppercase tracking-wider font-black text-on-surface-variant">Stop 15m</th>
-          <th class="px-3 py-3"></th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-outline-variant/5">
-        ${rows.map((r,i)=>`<tr class="hover:bg-surface-container-highest/30 transition-colors">
-          <td class="px-3 py-3 text-[10px] mono text-on-surface-variant/50">${i+1}</td>
-          <td class="px-3 py-3 font-bold text-primary text-sm">${r.coin}</td>
-          <td class="px-3 py-3 mono text-sm">${fmtP(r.price)}</td>
-          ${TIMEFRAMES.map(tf=>`<td class="px-3 py-3">${sigBadge(r.timeframes[tf]?.signal||'NO_DATA')}</td>`).join('')}
-          <td class="px-3 py-3 mono text-xs text-error/70">${fmtP(r.timeframes['15m']?.stop)}</td>
-          <td class="px-3 py-3">${tvBtn(r.coin)}</td>
+  if(!rows.length) return `<div class="empty-state">Bu kategoride coin yok.</div>`;
+  return `<div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Coin</th><th>Fiyat</th><th>15m</th><th>1H</th><th>2H</th><th>4H</th><th>Stop 15m</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((r,i)=>`<tr>
+          <td class="num" style="color:rgba(192,199,212,0.4);font-size:10px">${i+1}</td>
+          <td class="coin-cell coin-primary">${r.coin}</td>
+          <td class="num">${fmtP(r.price)}</td>
+          ${TIMEFRAMES.map(tf=>`<td>${sigBadge(r.timeframes[tf]?.signal||'NO_DATA')}</td>`).join('')}
+          <td class="num" style="color:rgba(255,180,171,0.65);font-size:11px">${fmtP(r.timeframes['15m']?.stop)}</td>
+          <td>${tvBtn(r.coin)}</td>
         </tr>`).join('')}
       </tbody>
     </table>
@@ -711,102 +943,87 @@ function renderScanner() {
   prevBuyAll=buy15.length;
 
   document.getElementById('scanContent').innerHTML=`
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+    <div class="scan-grid">
       <section>
-        <div class="flex items-center gap-2 mb-3">
-          <span class="text-sm font-black text-tertiary">🔥 15m BUY</span>
-          <span class="text-[10px] text-on-surface-variant">— Sim pozisyon açar</span>
+        <div class="scan-section-header">
+          <span class="title" style="color:var(--tertiary)">🔥 15m BUY</span>
+          <span class="sub">— Sim pozisyon açar</span>
         </div>
-        ${buy15.length?scanTable(buy15):'<div class="bg-surface-container-low rounded-lg p-4 text-center text-sm text-on-surface-variant">Şu an 15m BUY sinyali yok.</div>'}
+        ${buy15.length?scanTable(buy15):'<div class="empty-state" style="background:var(--sc-low);border-radius:10px;padding:16px">Şu an 15m BUY sinyali yok.</div>'}
       </section>
       <section>
-        <div class="flex items-center gap-2 mb-3">
-          <span class="text-sm font-black" style="color:#67df70">📈 15m HOLD</span>
-          <span class="text-[10px] text-on-surface-variant">— Trend devam</span>
+        <div class="scan-section-header">
+          <span class="title" style="color:#67df70">📈 15m HOLD</span>
+          <span class="sub">— Trend devam</span>
         </div>
         ${scanTable(hold15)}
       </section>
       <section>
-        <div class="flex items-center gap-2 mb-3">
-          <span class="text-sm font-black text-error">🔴 15m SELL / SELL HOLD</span>
-          <span class="text-[10px] text-on-surface-variant">— Sim kapar</span>
+        <div class="scan-section-header">
+          <span class="title" style="color:var(--error)">🔴 15m SELL / SELL HOLD</span>
+          <span class="sub">— Sim kapar</span>
         </div>
         ${scanTable(sell15)}
       </section>
       ${otherBuy.length?`<section>
-        <div class="flex items-center gap-2 mb-3">
-          <span class="text-sm font-black text-secondary">⚡ Diğer TF BUY</span>
-          <span class="text-[10px] text-on-surface-variant">— 15m henüz nötr</span>
+        <div class="scan-section-header">
+          <span class="title" style="color:var(--secondary)">⚡ Diğer TF BUY</span>
+          <span class="sub">— 15m henüz nötr</span>
         </div>
         ${scanTable(otherBuy)}
       </section>`:''}
     </div>
-    <p class="text-center text-[10px] text-on-surface-variant/30 py-5">⚠️ Yatırım tavsiyesi değildir. Max %1-2 risk.</p>`;
+    <p class="disclaimer">⚠️ Yatırım tavsiyesi değildir. Max %1-2 risk.</p>`;
 }
 
 // ══════════════════════════════════════════════════════════════
 // HELPERS
 // ══════════════════════════════════════════════════════════════
-function pnlCls(v) { return v>0?'text-tertiary':v<0?'text-error':'text-on-surface-variant'; }
+function pnlCls(v) { return v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu'; }
 function pnlFmt(v) { return (v>=0?'+':'')+v.toFixed(2)+'$'; }
 function nowISO()  { return new Date().toLocaleString('tr-TR',{timeZone:'UTC'})+' UTC'; }
 
-function posTable(posCoins,enriched,coinColor='text-primary') {
-  if(!posCoins.length) return `<p class="p-6 text-center text-sm text-on-surface-variant">Açık pozisyon yok.</p>`;
-  return `<div class="overflow-x-auto"><table class="w-full text-left">
-    <thead class="bg-surface-container-high/30 border-b border-outline-variant/10"><tr>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Coin</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Giriş</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Anlık</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Maliyet</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Açık K/Z</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">K/Z %</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Zaman</th>
-      <th class="px-4 py-3"></th>
+function posTable(posCoins,enriched,coinClass='coin-primary') {
+  if(!posCoins.length) return `<p class="empty-state">Açık pozisyon yok.</p>`;
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Coin</th><th>Giriş</th><th>Anlık</th><th>Maliyet</th><th>Açık K/Z</th><th>K/Z %</th><th>Zaman</th><th></th>
     </tr></thead>
-    <tbody class="divide-y divide-outline-variant/5">
+    <tbody>
       ${posCoins.map(coin=>{
         const e=enriched[coin]||{},u=e.unreal??0,up=e.unrealPct??0;
-        return `<tr class="hover:bg-surface-container-highest/30 transition-colors">
-          <td class="px-4 py-3 font-bold ${coinColor}">${coin}</td>
-          <td class="px-4 py-3 mono text-xs">${fmtP(e.entryPrice)}</td>
-          <td class="px-4 py-3 mono text-sm font-bold">${fmtP(e.cur)}</td>
-          <td class="px-4 py-3 mono text-xs">$${(e.cost??0).toFixed(2)}</td>
-          <td class="px-4 py-3 mono text-sm font-black ${pnlCls(u)}">${pnlFmt(u)}</td>
-          <td class="px-4 py-3 mono text-xs ${pnlCls(up)}">${up>=0?'+':''}${up}%</td>
-          <td class="px-4 py-3 text-[10px] text-on-surface-variant">${e.entryTime??'—'}</td>
-          <td class="px-4 py-3">${tvBtn(coin)}</td>
+        return `<tr>
+          <td class="coin-cell ${coinClass}">${coin}</td>
+          <td class="num" style="font-size:11px">${fmtP(e.entryPrice)}</td>
+          <td class="num" style="font-weight:700">${fmtP(e.cur)}</td>
+          <td class="num" style="font-size:11px">$${(e.cost??0).toFixed(2)}</td>
+          <td class="num ${pnlCls(u)}" style="font-weight:900">${pnlFmt(u)}</td>
+          <td class="num ${pnlCls(up)}" style="font-size:11px">${up>=0?'+':''}${up}%</td>
+          <td style="font-size:10px;color:var(--on-sv)">${e.entryTime??'—'}</td>
+          <td>${tvBtn(coin)}</td>
         </tr>`;
       }).join('')}
     </tbody>
   </table></div>`;
 }
 
-function tradesTable(trades,coinColor='text-primary') {
-  if(!trades.length) return `<p class="p-6 text-center text-sm text-on-surface-variant">Henüz kapalı işlem yok.</p>`;
-  return `<div class="overflow-x-auto"><table class="w-full text-left">
-    <thead class="bg-surface-container-high/30 border-b border-outline-variant/10"><tr>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Coin</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Giriş</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Çıkış</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">K/Z</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">K/Z %</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Süre</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Sinyal</th>
-      <th class="px-4 py-3 text-[9px] font-black uppercase tracking-wider text-on-surface-variant">Zaman</th>
-      <th class="px-4 py-3"></th>
+function tradesTable(trades,coinClass='coin-primary') {
+  if(!trades.length) return `<p class="empty-state">Henüz kapalı işlem yok.</p>`;
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Coin</th><th>Giriş</th><th>Çıkış</th><th>K/Z</th><th>K/Z %</th><th>Süre</th><th>Sinyal</th><th>Zaman</th><th></th>
     </tr></thead>
-    <tbody class="divide-y divide-outline-variant/5">
-      ${trades.map(t=>`<tr class="${t.win?'border-l-2 border-tertiary':'border-l-2 border-error'} hover:bg-surface-container-highest/30 transition-colors">
-        <td class="px-4 py-3 font-bold ${coinColor}">${t.coin}</td>
-        <td class="px-4 py-3 mono text-xs">${fmtP(t.entryPrice)}</td>
-        <td class="px-4 py-3 mono text-xs">${fmtP(t.exitPrice)}</td>
-        <td class="px-4 py-3 mono text-sm font-black ${pnlCls(t.pnl)}">${pnlFmt(t.pnl)}</td>
-        <td class="px-4 py-3 mono text-xs ${pnlCls(t.pnlPct)}">${t.pnlPct>=0?'+':''}${t.pnlPct}%</td>
-        <td class="px-4 py-3 text-[10px] text-on-surface-variant">${t.duration}</td>
-        <td class="px-4 py-3">${sigBadge(t.triggerSig)}</td>
-        <td class="px-4 py-3 text-[10px] text-on-surface-variant">${t.exitTime}</td>
-        <td class="px-4 py-3">${tvBtn(t.coin)}</td>
+    <tbody>
+      ${trades.map(t=>`<tr class="${t.win?'trade-win':'trade-loss'}">
+        <td class="coin-cell ${coinClass}">${t.coin}</td>
+        <td class="num" style="font-size:11px">${fmtP(t.entryPrice)}</td>
+        <td class="num" style="font-size:11px">${fmtP(t.exitPrice)}</td>
+        <td class="num ${pnlCls(t.pnl)}" style="font-weight:900">${pnlFmt(t.pnl)}</td>
+        <td class="num ${pnlCls(t.pnlPct)}" style="font-size:11px">${t.pnlPct>=0?'+':''}${t.pnlPct}%</td>
+        <td style="font-size:10px;color:var(--on-sv)">${t.duration}</td>
+        <td>${sigBadge(t.triggerSig)}</td>
+        <td style="font-size:10px;color:var(--on-sv)">${t.exitTime}</td>
+        <td>${tvBtn(t.coin)}</td>
       </tr>`).join('')}
     </tbody>
   </table></div>`;
@@ -854,13 +1071,9 @@ async function renderSim() {
   document.getElementById('simBudget').disabled=running;
   const pill=document.getElementById('simPill');
   pill.textContent=running?'CANLI':'KAPALI';
-  pill.className=running
-    ?'px-3 py-1.5 rounded-full text-xs font-black bg-tertiary/20 text-tertiary border border-tertiary/30'
-    :'px-3 py-1.5 rounded-full text-xs font-black bg-surface-container-highest text-on-surface-variant border border-outline-variant/20';
+  pill.className=running?'pill live-primary':'pill';
   document.getElementById('badge-sim').textContent=running?'CANLI':'KAPALI';
-  document.getElementById('badge-sim').className=running
-    ?'text-[9px] font-black px-1.5 py-0.5 rounded-full bg-tertiary/20 text-tertiary ml-1.5'
-    :'text-[9px] font-black px-1.5 py-0.5 rounded-full bg-error/20 text-error ml-1.5';
+  document.getElementById('badge-sim').className=running?'tnav-badge live':'tnav-badge';
   if(sim.startedAt) document.getElementById('simStartedAt').textContent='Başlangıç: '+sim.startedAt;
 
   const posCoins=Object.keys(sim.positions); let totalUnreal=0; const enriched={};
@@ -882,12 +1095,12 @@ async function renderSim() {
   document.getElementById('sLosses').textContent=losses;
   document.getElementById('sWinRate').textContent=wr;
   document.getElementById('sOpenPos').textContent=posCoins.length;
-  const rEl=document.getElementById('sRealPnl'); rEl.textContent=pnlFmt(rPnl); rEl.className='text-xl font-black mono '+pnlCls(rPnl);
-  const uEl=document.getElementById('sUnrealPnl'); uEl.textContent=pnlFmt(uPnl); uEl.className='text-xl font-black mono '+pnlCls(uPnl);
-  const tEl=document.getElementById('sTotalPnl'); tEl.textContent=pnlFmt(tPnl); tEl.className='text-xl font-black mono '+pnlCls(tPnl);
+  const rEl=document.getElementById('sRealPnl'); rEl.textContent=pnlFmt(rPnl); rEl.className='value mono '+pnlCls(rPnl);
+  const uEl=document.getElementById('sUnrealPnl'); uEl.textContent=pnlFmt(uPnl); uEl.className='value mono '+pnlCls(uPnl);
+  const tEl=document.getElementById('sTotalPnl'); tEl.textContent=pnlFmt(tPnl); tEl.className='value mono '+pnlCls(tPnl);
   if(trades.length){const best=trades.reduce((a,b)=>a.pnl>b.pnl?a:b); document.getElementById('sTotalSub').textContent=`En iyi: ${best.coin} (${pnlFmt(best.pnl)})`;}
-  document.getElementById('simPositions').innerHTML=posTable(posCoins,enriched,'text-primary');
-  document.getElementById('simTrades').innerHTML=tradesTable(trades,'text-primary');
+  document.getElementById('simPositions').innerHTML=posTable(posCoins,enriched,'coin-primary');
+  document.getElementById('simTrades').innerHTML=tradesTable(trades,'coin-primary');
 }
 
 function simStart()  { sim.running=true; sim.startedAt=nowISO(); sim.budget=parseFloat(document.getElementById('simBudget').value)||1000; saveSim(); toast('Simülasyon Başladı',`Her coin için $${sim.budget} bütçe.`); renderSim(); simTick(); }
@@ -930,13 +1143,9 @@ async function renderMemeSim() {
   document.getElementById('memeBudget').disabled=running;
   const pill=document.getElementById('memePill');
   pill.textContent=running?'CANLI':'KAPALI';
-  pill.className=running
-    ?'px-3 py-1.5 rounded-full text-xs font-black bg-secondary/20 text-secondary border border-secondary/30'
-    :'px-3 py-1.5 rounded-full text-xs font-black bg-surface-container-highest text-on-surface-variant border border-outline-variant/20';
+  pill.className=running?'pill live-secondary':'pill';
   document.getElementById('badge-meme').textContent=running?'CANLI':'KAPALI';
-  document.getElementById('badge-meme').className=running
-    ?'text-[9px] font-black px-1.5 py-0.5 rounded-full bg-secondary/20 text-secondary ml-1.5'
-    :'text-[9px] font-black px-1.5 py-0.5 rounded-full bg-error/20 text-error ml-1.5';
+  document.getElementById('badge-meme').className=running?'tnav-badge live':'tnav-badge';
   if(memeSim.startedAt) document.getElementById('memeStartedAt').textContent='Başlangıç: '+memeSim.startedAt;
 
   const posCoins=Object.keys(memeSim.positions); let totalUnreal=0; const enriched={};
@@ -958,12 +1167,12 @@ async function renderMemeSim() {
   document.getElementById('mLosses').textContent=losses;
   document.getElementById('mWinRate').textContent=wr;
   document.getElementById('mOpenPos').textContent=posCoins.length;
-  const rEl=document.getElementById('mRealPnl'); rEl.textContent=pnlFmt(rPnl); rEl.className='text-xl font-black mono '+pnlCls(rPnl);
-  const uEl=document.getElementById('mUnrealPnl'); uEl.textContent=pnlFmt(uPnl); uEl.className='text-xl font-black mono '+pnlCls(uPnl);
-  const tEl=document.getElementById('mTotalPnl'); tEl.textContent=pnlFmt(tPnl); tEl.className='text-xl font-black mono '+pnlCls(tPnl);
+  const rEl=document.getElementById('mRealPnl'); rEl.textContent=pnlFmt(rPnl); rEl.className='value mono '+pnlCls(rPnl);
+  const uEl=document.getElementById('mUnrealPnl'); uEl.textContent=pnlFmt(uPnl); uEl.className='value mono '+pnlCls(uPnl);
+  const tEl=document.getElementById('mTotalPnl'); tEl.textContent=pnlFmt(tPnl); tEl.className='value mono '+pnlCls(tPnl);
   if(trades.length){const best=trades.reduce((a,b)=>a.pnl>b.pnl?a:b); document.getElementById('mTotalSub').textContent=`En iyi: ${best.coin} (${pnlFmt(best.pnl)})`;}
-  document.getElementById('memePositions').innerHTML=posTable(posCoins,enriched,'text-secondary');
-  document.getElementById('memeTrades').innerHTML=tradesTable(trades,'text-secondary');
+  document.getElementById('memePositions').innerHTML=posTable(posCoins,enriched,'coin-secondary');
+  document.getElementById('memeTrades').innerHTML=tradesTable(trades,'coin-secondary');
 }
 
 function memeSimStart() { memeSim.running=true; memeSim.startedAt=nowISO(); memeSim.budget=parseFloat(document.getElementById('memeBudget').value)||1000; saveMemeSim(); toast('🐸 MEME Simülasyonu Başladı',`Her coin için $${memeSim.budget} bütçe.`); renderMemeSim(); memeSimTick(); }
@@ -974,9 +1183,9 @@ function memeSimReset() { if(!confirm('Tüm MEME simülasyon verisi silinecek. E
 // NOTIFICATIONS + TOAST
 // ══════════════════════════════════════════════════════════════
 async function toggleNotif() {
-  if(notifEnabled){notifEnabled=false;document.getElementById('notifBtn').classList.remove('text-tertiary');toast('Bildirimler kapatıldı','');return;}
+  if(notifEnabled){notifEnabled=false;document.getElementById('notifBtn').classList.remove('active');toast('Bildirimler kapatıldı','');return;}
   if(!('Notification'in window)){toast('Desteklenmiyor','');return;}
-  if(await Notification.requestPermission()==='granted'){notifEnabled=true;document.getElementById('notifBtn').classList.add('text-tertiary');toast('Bildirimler Açık','Yeni sinyal gelince uyarılacaksınız.');}
+  if(await Notification.requestPermission()==='granted'){notifEnabled=true;document.getElementById('notifBtn').classList.add('active');toast('Bildirimler Açık','Yeni sinyal gelince uyarılacaksınız.');}
   else toast('İzin Reddedildi','Tarayıcı ayarlarından verin.');
 }
 function sendNotif(title,body){if(notifEnabled&&Notification.permission==='granted') new Notification(title,{body});}
@@ -984,8 +1193,8 @@ function toast(title,body,ms=4500){
   document.getElementById('toastTitle').textContent=title;
   document.getElementById('toastBody').textContent=body;
   const el=document.getElementById('toast');
-  el.classList.remove('hidden');clearTimeout(el._t);
-  el._t=setTimeout(()=>el.classList.add('hidden'),ms);
+  el.style.display='block'; clearTimeout(el._t);
+  el._t=setTimeout(()=>el.style.display='none',ms);
 }
 
 // ══════════════════════════════════════════════════════════════
