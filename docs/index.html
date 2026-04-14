@@ -139,6 +139,9 @@
   <div class="tab" id="tab-sim" onclick="switchTab('sim')">
     🤖 Simülasyon <span class="tab-badge red" id="badge-sim">KAPALI</span>
   </div>
+  <div class="tab" id="tab-meme" onclick="switchTab('meme')">
+    🐸 SimMEME <span class="tab-badge red" id="badge-meme">KAPALI</span>
+  </div>
 </div>
 
 <!-- STATUS BAR -->
@@ -217,6 +220,45 @@
   </div>
 </div>
 
+<!-- ═══ TAB 3: SİMÜLASYON MEME ══════════════════════════════ -->
+<div class="tab-page" id="page-meme">
+  <div class="sim-controls">
+    <label>Coin başına bütçe (USD):</label>
+    <input type="number" class="sim-input" id="memeBudget" value="1000" min="10" step="10"/>
+    <button class="btn" id="memeStartBtn" onclick="memeSimStart()">▶ Başlat</button>
+    <button class="btn btn-red" id="memeStopBtn" onclick="memeSimStop()" style="display:none">⏹ Durdur</button>
+    <button class="btn btn-gray" onclick="memeSimReset()">↺ Sıfırla</button>
+    <span class="sim-status-pill off" id="memePill">KAPALI</span>
+    <span style="font-size:11px;color:var(--muted)" id="memeStartedAt"></span>
+    <span style="font-size:11px;background:#1c2128;border:1px solid var(--border);border-radius:6px;padding:3px 9px;color:var(--purple)">
+      🐸 DOGE · SHIB · PEPE · BONK · FLOKI · WIF ve daha fazlası
+    </span>
+  </div>
+
+  <div class="summary">
+    <div class="card"><div class="card-label">Toplam İşlem</div><div class="card-value cv-blue" id="mTrades">0</div></div>
+    <div class="card"><div class="card-label">Kazanan</div><div class="card-value cv-green" id="mWins">0</div></div>
+    <div class="card"><div class="card-label">Kaybeden</div><div class="card-value cv-red" id="mLosses">0</div></div>
+    <div class="card"><div class="card-label">Win Rate</div><div class="card-value cv-yellow" id="mWinRate">—</div></div>
+    <div class="card"><div class="card-label">Gerçekleşen K/Z</div><div class="card-value" id="mRealPnl">$0.00</div></div>
+    <div class="card"><div class="card-label">Açık K/Z</div><div class="card-value" id="mUnrealPnl">$0.00</div></div>
+    <div class="card"><div class="card-label">Toplam K/Z</div><div class="card-value" id="mTotalPnl">$0.00</div><div class="card-sub" id="mTotalSub"></div></div>
+    <div class="card"><div class="card-label">Açık Pozisyon</div><div class="card-value cv-purple" id="mOpenPos">0</div></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">📂 Açık Pozisyonlar</div>
+    <div id="memePositions"><div class="empty">Henüz açık pozisyon yok — BUY sinyali bekleniyor.</div></div>
+
+    <div class="sec-title">📜 İşlem Geçmişi <span class="sec-sub">(en yeni üstte)</span></div>
+    <div id="memeTrades"><div class="empty">Henüz kapalı işlem yok.</div></div>
+
+    <div style="padding:14px 0;text-align:center;font-size:11px;color:var(--muted)">
+      ⚠️ Simülasyon yalnızca sekme açıkken çalışır. Meme coinler yüksek volatiliteye sahiptir. Gerçek para içermez.
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"><div class="toast-title" id="toastTitle"></div><div class="toast-body" id="toastBody"></div></div>
 
@@ -250,6 +292,12 @@ const TOP100 = [
 
 const COINS = [...new Set(TOP100.filter(c => !EXCLUDE.has(c)))];
 
+const MEME_COINS = [
+  'DOGE','SHIB','PEPE','BONK','FLOKI','WIF','MEME','BRETT',
+  'TURBO','BOME','POPCAT','NEIRO','PNUT','ACT','GOAT','DOGS',
+  'PENGU','TRUMP','BABYDOGE',
+];
+
 // ══════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════
@@ -277,6 +325,24 @@ function loadSim() {
 }
 function saveSim() {
   try { localStorage.setItem(SIM_KEY, JSON.stringify(sim)); } catch {}
+}
+
+// MEME Simulation (persisted to localStorage)
+const MEME_SIM_KEY = 'utbot_meme_sim_v1';
+let memeSim = loadMemeSim();
+
+function defaultMemeSim() {
+  return {
+    running: false, startedAt: null, budget: 1000,
+    positions: {}, trades: [], prevSignals: {}, totalRealizedPnl: 0
+  };
+}
+function loadMemeSim() {
+  try { const s = localStorage.getItem(MEME_SIM_KEY); return s ? JSON.parse(s) : defaultMemeSim(); }
+  catch { return defaultMemeSim(); }
+}
+function saveMemeSim() {
+  try { localStorage.setItem(MEME_SIM_KEY, JSON.stringify(memeSim)); } catch {}
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -747,6 +813,190 @@ function simReset() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// MEME SIMULATION ENGINE
+// ══════════════════════════════════════════════════════════════
+async function memeSimTick() {
+  if (!memeSim.running) return;
+
+  const tasks = MEME_COINS.map(coin => async () => {
+    const klines15 = await fetchKlines(coin, '15m', 60);
+    return { coin, r15: utBot(klines15) };
+  });
+
+  const raw = await pool(tasks, CONCURRENCY);
+
+  for (const item of raw) {
+    if (!item) continue;
+    const { coin, r15 } = item;
+    if (!r15 || r15.signal === 'NO_DATA' || r15.price == null) continue;
+
+    const { signal, stop, price } = r15;
+    const inPos = !!memeSim.positions[coin];
+
+    if (signal === 'BUY' && !inPos) {
+      const qty = memeSim.budget / price;
+      memeSim.positions[coin] = {
+        entryPrice: price, entryTime: nowISO(), entryTs: Date.now(),
+        qty, cost: memeSim.budget, stop, entryReason: '15m BUY'
+      };
+      toast('🐸 Pozisyon Açıldı', `${coin} @ ${fmtP(price)}`);
+    }
+
+    if ((signal === 'SELL' || signal === 'SELL_HOLD') && inPos) {
+      const pos     = memeSim.positions[coin];
+      delete memeSim.positions[coin];
+      const revenue = pos.qty * price;
+      const pnl     = revenue - pos.cost;
+      const pnlPct  = (pnl / pos.cost) * 100;
+      const durMs   = Date.now() - pos.entryTs;
+      const h = Math.floor(durMs / 3600000);
+      const m = Math.floor((durMs % 3600000) / 60000);
+
+      memeSim.trades.unshift({
+        coin, entryPrice: pos.entryPrice, exitPrice: price,
+        qty: pos.qty, cost: pos.cost, revenue,
+        pnl: +pnl.toFixed(4), pnlPct: +pnlPct.toFixed(2),
+        entryTime: pos.entryTime, exitTime: nowISO(),
+        entryReason: pos.entryReason || '15m BUY',
+        duration: `${h}s ${m}dk`, win: pnl >= 0, triggerSig: signal
+      });
+      memeSim.totalRealizedPnl = +(memeSim.totalRealizedPnl + pnl).toFixed(4);
+      toast(
+        pnl >= 0 ? '✅ Karlı Kapandı' : '❌ Zararlı Kapandı',
+        `${coin}: ${pnl>=0?'+':''}${pnl.toFixed(2)}$ (${pnlPct>=0?'+':''}${pnlPct.toFixed(2)}%)`
+      );
+    }
+
+    memeSim.prevSignals[coin] = signal;
+  }
+
+  saveMemeSim();
+  renderMemeSim();
+}
+
+// ══════════════════════════════════════════════════════════════
+// MEME SIMULATION RENDER
+// ══════════════════════════════════════════════════════════════
+async function renderMemeSim() {
+  const running = memeSim.running;
+
+  document.getElementById('memeStartBtn').style.display = running ? 'none' : '';
+  document.getElementById('memeStopBtn').style.display  = running ? '' : 'none';
+  document.getElementById('memeBudget').disabled = running;
+  const pill = document.getElementById('memePill');
+  pill.textContent = running ? 'CANLI' : 'KAPALI';
+  pill.className   = 'sim-status-pill ' + (running ? 'on' : 'off');
+  document.getElementById('badge-meme').textContent = running ? 'CANLI' : 'KAPALI';
+  document.getElementById('badge-meme').className   = 'tab-badge' + (running ? '' : ' red');
+  if (memeSim.startedAt)
+    document.getElementById('memeStartedAt').textContent = 'Başlangıç: ' + memeSim.startedAt;
+
+  const posCoins = Object.keys(memeSim.positions);
+  let totalUnreal = 0;
+  const enriched = {};
+
+  if (posCoins.length) {
+    const priceTasks = posCoins.map(coin => async () => {
+      const p = await fetchPrice(coin);
+      return { coin, p };
+    });
+    const prices = await pool(priceTasks, CONCURRENCY);
+    for (const { coin, p } of prices) {
+      const pos = memeSim.positions[coin];
+      const cur = p || pos.entryPrice;
+      const unreal    = (cur - pos.entryPrice) * pos.qty;
+      const unrealPct = ((cur - pos.entryPrice) / pos.entryPrice) * 100;
+      totalUnreal += unreal;
+      enriched[coin] = { ...pos, cur, unreal: +unreal.toFixed(4), unrealPct: +unrealPct.toFixed(2) };
+    }
+  }
+
+  const trades = memeSim.trades;
+  const wins   = trades.filter(t => t.win).length;
+  const losses = trades.filter(t => !t.win).length;
+  const wr     = trades.length ? (wins/trades.length*100).toFixed(1)+'%' : '—';
+  const rPnl   = memeSim.totalRealizedPnl;
+  const uPnl   = +totalUnreal.toFixed(4);
+  const tPnl   = +(rPnl + uPnl).toFixed(4);
+
+  document.getElementById('mTrades').textContent  = trades.length;
+  document.getElementById('mWins').textContent    = wins;
+  document.getElementById('mLosses').textContent  = losses;
+  document.getElementById('mWinRate').textContent = wr;
+  document.getElementById('mOpenPos').textContent = posCoins.length;
+
+  const rEl = document.getElementById('mRealPnl');
+  rEl.textContent = pnlFmt(rPnl); rEl.className = 'card-value ' + pnlCls(rPnl);
+  const uEl = document.getElementById('mUnrealPnl');
+  uEl.textContent = pnlFmt(uPnl); uEl.className = 'card-value ' + pnlCls(uPnl);
+  const tEl = document.getElementById('mTotalPnl');
+  tEl.textContent = pnlFmt(tPnl); tEl.className = 'card-value ' + pnlCls(tPnl);
+  if (trades.length) {
+    const best = trades.reduce((a,b) => a.pnl>b.pnl?a:b);
+    document.getElementById('mTotalSub').textContent = `En iyi: ${best.coin} (${pnlFmt(best.pnl)})`;
+  }
+
+  const posEl = document.getElementById('memePositions');
+  posEl.innerHTML = posCoins.length ? `<div class="tbl-wrap" style="margin-bottom:18px"><table>
+    <thead><tr><th>Coin</th><th>Giriş</th><th>Anlık</th><th>Maliyet</th><th>Açık K/Z</th><th>K/Z %</th><th>Giriş Zamanı</th><th>Grafik</th></tr></thead>
+    <tbody>${posCoins.map(coin => {
+      const e = enriched[coin] || {};
+      const u = e.unreal ?? 0, up = e.unrealPct ?? 0;
+      return `<tr>
+        <td><b>${coin}</b></td><td>${fmtP(e.entryPrice)}</td><td><b>${fmtP(e.cur)}</b></td>
+        <td>$${(e.cost??0).toFixed(2)}</td>
+        <td class="${pnlCls(u)}">${pnlFmt(u)}</td>
+        <td class="${pnlCls(up)}">${up>=0?'+':''}${up}%</td>
+        <td style="font-size:11px;color:var(--muted)">${e.entryTime??'—'}</td>
+        <td>${tvBtn(coin)}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>` : `<div class="empty">Açık pozisyon yok.</div>`;
+
+  const trdEl = document.getElementById('memeTrades');
+  trdEl.innerHTML = trades.length ? `<div class="tbl-wrap"><table>
+    <thead><tr><th>Coin</th><th>Giriş</th><th>Çıkış</th><th>K/Z</th><th>K/Z %</th><th>Süre</th><th>Sinyal</th><th>Çıkış Zamanı</th><th>Grafik</th></tr></thead>
+    <tbody>${trades.map(t => `<tr class="${t.win?'trade-win':'trade-loss'}">
+      <td><b>${t.coin}</b></td><td>${fmtP(t.entryPrice)}</td><td>${fmtP(t.exitPrice)}</td>
+      <td class="${pnlCls(t.pnl)}">${pnlFmt(t.pnl)}</td>
+      <td class="${pnlCls(t.pnlPct)}">${t.pnlPct>=0?'+':''}${t.pnlPct}%</td>
+      <td style="color:var(--muted);font-size:11px">${t.duration}</td>
+      <td>${sigBadge(t.triggerSig)}</td>
+      <td style="font-size:11px;color:var(--muted)">${t.exitTime}</td>
+      <td>${tvBtn(t.coin)}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>` : `<div class="empty">Henüz kapalı işlem yok.</div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// MEME SIM CONTROLS
+// ══════════════════════════════════════════════════════════════
+function memeSimStart() {
+  memeSim.running   = true;
+  memeSim.startedAt = nowISO();
+  memeSim.budget    = parseFloat(document.getElementById('memeBudget').value) || 1000;
+  saveMemeSim();
+  toast('🐸 MEME Simülasyonu Başladı', `Her coin için $${memeSim.budget} bütçe.`);
+  renderMemeSim();
+  memeSimTick();
+}
+
+function memeSimStop() {
+  memeSim.running = false;
+  saveMemeSim();
+  toast('Durduruldu', 'Sonuçlar korundu.');
+  renderMemeSim();
+}
+
+function memeSimReset() {
+  if (!confirm('Tüm MEME simülasyon verisi silinecek. Emin misiniz?')) return;
+  memeSim = defaultMemeSim();
+  saveMemeSim();
+  toast('Sıfırlandı', '');
+  renderMemeSim();
+}
+
+// ══════════════════════════════════════════════════════════════
 // NOTIFICATIONS
 // ══════════════════════════════════════════════════════════════
 async function toggleNotif() {
@@ -809,12 +1059,14 @@ setInterval(() => { if (!scanning) startScan(); }, SCAN_INTERVAL_MS);
 
 // Sim live P&L refresh every 15s
 setInterval(() => { if (sim.running || Object.keys(sim.positions).length) renderSim(); }, SIM_REFRESH_MS);
+setInterval(() => { if (memeSim.running || Object.keys(memeSim.positions).length) renderMemeSim(); }, SIM_REFRESH_MS);
 
 // ══════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════
-renderSim();   // load saved sim state immediately
-startScan();   // kick off first scan
+renderSim();      // load saved sim state immediately
+renderMemeSim();  // load saved meme sim state
+startScan();      // kick off first scan
 </script>
 </body>
 </html>
