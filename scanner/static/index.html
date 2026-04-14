@@ -195,6 +195,10 @@
     🤖 Simülasyon
     <span class="tab-badge" id="badge-sim">KAPALI</span>
   </div>
+  <div class="tab" id="tab-meme" onclick="switchTab('meme')">
+    🐸 SimMEME
+    <span class="tab-badge" id="badge-meme">KAPALI</span>
+  </div>
 </div>
 
 <!-- ══ STATUS BAR ════════════════════════════════════════════ -->
@@ -288,6 +292,62 @@
 
     <div style="padding:14px 0;text-align:center;font-size:11px;color:var(--muted)">
       ⚠️ Bu simülasyon gerçek para içermez. Geçmiş performans gelecek sonuçları garanti etmez.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- TAB 3: SİMÜLASYON MEME                                    -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="tab-page" id="page-meme">
+
+  <!-- Controls -->
+  <div class="sim-controls">
+    <label>Coin başına bütçe (USD):</label>
+    <input type="number" class="sim-input" id="memeBudget" value="1000" min="10" step="10"/>
+    <button class="btn" id="memeStartBtn" onclick="memeStart()">▶ Başlat</button>
+    <button class="btn btn-red" id="memeStopBtn" onclick="memeStop()" style="display:none">⏹ Durdur</button>
+    <button class="btn btn-gray" id="memeResetBtn" onclick="memeReset()">↺ Sıfırla</button>
+    <span class="sim-status-pill off" id="memePill">KAPALI</span>
+    <span style="font-size:11px;color:var(--muted)" id="memeStartedAt"></span>
+    <span style="font-size:11px;color:var(--purple);margin-left:8px">🐸 DOGE · SHIB · PEPE · BONK · FLOKI · WIF ve daha fazlası</span>
+  </div>
+
+  <!-- P&L Summary -->
+  <div class="summary" id="memeSummary">
+    <div class="card"><div class="card-label">Toplam İşlem</div><div class="card-value cv-blue" id="mTrades">—</div></div>
+    <div class="card"><div class="card-label">Kazanan</div><div class="card-value cv-green" id="mWins">—</div></div>
+    <div class="card"><div class="card-label">Kaybeden</div><div class="card-value cv-red" id="mLosses">—</div></div>
+    <div class="card"><div class="card-label">Win Rate</div><div class="card-value cv-yellow" id="mWinRate">—</div></div>
+    <div class="card">
+      <div class="card-label">Gerçekleşen K/Z</div>
+      <div class="card-value" id="mRealPnl">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Açık K/Z</div>
+      <div class="card-value" id="mUnrealPnl">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Toplam K/Z</div>
+      <div class="card-value" id="mTotalPnl">—</div>
+      <div class="card-sub" id="mTotalPnlSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Açık Pozisyon</div>
+      <div class="card-value cv-purple" id="mOpenPos">—</div>
+    </div>
+  </div>
+
+  <!-- Open Positions -->
+  <div class="section">
+    <div class="sec-title">📂 Açık Pozisyonlar</div>
+    <div id="memePositions"><div class="empty">Henüz açık pozisyon yok.</div></div>
+
+    <div class="sec-title">📜 İşlem Geçmişi <span class="sec-sub">(en yeni üstte)</span></div>
+    <div id="memeTrades"><div class="empty">Henüz kapalı işlem yok.</div></div>
+
+    <div style="padding:14px 0;text-align:center;font-size:11px;color:var(--muted)">
+      ⚠️ Bu simülasyon gerçek para içermez. Meme coinler yüksek volatiliteye sahiptir.
     </div>
   </div>
 </div>
@@ -639,6 +699,146 @@ async function simReset() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// MEME Simulation render
+// ═══════════════════════════════════════════════════════════════
+function renderMemeSim(data) {
+  const s  = data.stats || {};
+  const running = data.running;
+
+  document.getElementById('badge-meme').textContent = running ? 'CANLI' : 'KAPALI';
+  document.getElementById('badge-meme').className   = 'tab-badge' + (running ? '' : ' red');
+
+  const pill = document.getElementById('memePill');
+  pill.textContent = running ? 'CANLI' : 'KAPALI';
+  pill.className   = 'sim-status-pill ' + (running ? 'on' : 'off');
+  document.getElementById('memeStartBtn').style.display = running ? 'none' : '';
+  document.getElementById('memeStopBtn').style.display  = running ? '' : 'none';
+  document.getElementById('memeBudget').disabled = running;
+  if (data.started_at)
+    document.getElementById('memeStartedAt').textContent = 'Başlangıç: ' + data.started_at;
+
+  document.getElementById('mTrades').textContent  = s.total_trades ?? '—';
+  document.getElementById('mWins').textContent    = s.wins ?? '—';
+  document.getElementById('mLosses').textContent  = s.losses ?? '—';
+  document.getElementById('mWinRate').textContent = s.win_rate != null ? s.win_rate + '%' : '—';
+  document.getElementById('mOpenPos').textContent = s.open_positions ?? '—';
+
+  const rPnl = s.total_realized_pnl ?? 0;
+  const uPnl = s.total_unrealized_pnl ?? 0;
+  const tPnl = s.total_pnl ?? 0;
+
+  const rEl = document.getElementById('mRealPnl');
+  rEl.textContent = s.total_realized_fmt || '—';
+  rEl.className   = 'card-value ' + pnlClass(rPnl);
+
+  const uEl = document.getElementById('mUnrealPnl');
+  uEl.textContent = s.total_unrealized_fmt || '—';
+  uEl.className   = 'card-value ' + pnlClass(uPnl);
+
+  const tEl = document.getElementById('mTotalPnl');
+  tEl.textContent = s.total_pnl_fmt || '—';
+  tEl.className   = 'card-value ' + pnlClass(tPnl);
+  document.getElementById('mTotalPnlSub').textContent =
+    s.total_trades ? `En iyi: ${s.best_trade} (${s.best_pnl>0?'+':''}${s.best_pnl}$)` : '';
+
+  // Open positions
+  const positions = data.positions || {};
+  const posCoins  = Object.keys(positions);
+  const posEl = document.getElementById('memePositions');
+  if (!posCoins.length) {
+    posEl.innerHTML = `<div class="empty">Açık pozisyon yok — BUY sinyali bekleniyor.</div>`;
+  } else {
+    posEl.innerHTML = `
+      <div class="tbl-wrap" style="margin-bottom:18px">
+        <table>
+          <thead><tr>
+            <th>Coin</th><th>Giriş Fiyatı</th><th>Anlık Fiyat</th>
+            <th>Miktar</th><th>Maliyet</th><th>Açık K/Z</th><th>Açık K/Z %</th>
+            <th>Giriş Zamanı</th>
+          </tr></thead>
+          <tbody>
+            ${posCoins.map(coin => {
+              const p = positions[coin];
+              const cls = pnlClass(p.unrealized_pnl);
+              return `<tr>
+                <td><b>${coin}</b></td>
+                <td>${p.entry_price_fmt}</td>
+                <td><b>${p.current_price_fmt}</b></td>
+                <td style="font-size:11px;color:var(--muted)">${p.qty.toFixed(6)}</td>
+                <td>$${p.cost.toFixed(2)}</td>
+                <td class="${cls}">${p.unrealized_fmt}</td>
+                <td class="${cls}">${p.unrealized_pnl_pct > 0 ? '+' : ''}${p.unrealized_pnl_pct}%</td>
+                <td style="font-size:11px;color:var(--muted)">${p.entry_time}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  // Closed trades
+  const trades = data.trades || [];
+  const trdEl  = document.getElementById('memeTrades');
+  if (!trades.length) {
+    trdEl.innerHTML = `<div class="empty">Henüz kapalı işlem yok.</div>`;
+  } else {
+    trdEl.innerHTML = `
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Coin</th><th>Giriş</th><th>Çıkış</th>
+            <th>K/Z</th><th>K/Z %</th><th>Süre</th>
+            <th>Çıkış Sinyali</th><th>Çıkış Zamanı</th>
+          </tr></thead>
+          <tbody>
+            ${trades.map(t => {
+              const cls  = pnlClass(t.pnl);
+              const rowC = t.win ? 'trade-win' : 'trade-loss';
+              return `<tr class="${rowC}">
+                <td><b>${t.coin}</b></td>
+                <td>${t.entry_price_fmt}</td>
+                <td>${t.exit_price_fmt}</td>
+                <td class="${cls}">${t.pnl_fmt}</td>
+                <td class="${cls}">${t.pnl_pct > 0 ? '+' : ''}${t.pnl_pct}%</td>
+                <td style="color:var(--muted);font-size:11px">${t.duration}</td>
+                <td>${sigBadge(t.trigger_sig)}</td>
+                <td style="font-size:11px;color:var(--muted)">${t.exit_time}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MEME Simulation controls
+// ═══════════════════════════════════════════════════════════════
+async function memeStart() {
+  const budget = parseFloat(document.getElementById('memeBudget').value) || 1000;
+  await fetch('/api/meme/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ budget })
+  });
+  toast('MEME Simülasyonu Başladı', `Her coin için $${budget} bütçe. 15dk'da bir kontrol.`);
+  pollMemeSim();
+}
+
+async function memeStop() {
+  await fetch('/api/meme/stop', { method: 'POST' });
+  toast('MEME Simülasyonu Durduruldu', 'Sonuçlar korundu.');
+  pollMemeSim();
+}
+
+async function memeReset() {
+  if (!confirm('Tüm MEME simülasyon verisi silinecek. Emin misiniz?')) return;
+  await fetch('/api/meme/reset', { method: 'POST' });
+  toast('MEME Simülasyonu Sıfırlandı', '');
+  pollMemeSim();
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Poll loops
 // ═══════════════════════════════════════════════════════════════
 async function pollScanner() {
@@ -664,11 +864,21 @@ async function pollSim() {
   } catch(e) {}
 }
 
+async function pollMemeSim() {
+  try {
+    const res  = await fetch('/api/meme/state');
+    const data = await res.json();
+    renderMemeSim(data);
+  } catch(e) {}
+}
+
 // Initial load + intervals
 pollScanner();
 pollSim();
-setInterval(pollScanner, 15000);
-setInterval(pollSim,     10000);   // sim refreshes every 10s (live P&L)
+pollMemeSim();
+setInterval(pollScanner,  15000);
+setInterval(pollSim,      10000);
+setInterval(pollMemeSim,  10000);
 </script>
 </body>
 </html>

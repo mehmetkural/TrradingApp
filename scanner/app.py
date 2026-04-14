@@ -29,11 +29,17 @@ TOP100 = [
 COINS = list(dict.fromkeys([c for c in TOP100 if c not in EXCLUDE]))
 TIMEFRAMES = ['15m', '1h', '2h', '4h']
 
+MEME_COINS = [
+    'DOGE','SHIB','PEPE','BONK','FLOKI','WIF','MEME','BRETT',
+    'TURBO','BOME','POPCAT','NEIRO','PNUT','ACT','GOAT','DOGS',
+    'PENGU','TRUMP','BABYDOGE',
+]
+
 # ─── Scanner state ────────────────────────────────────────────
 scan_cache = {'last_scan': None, 'next_scan': None, 'results': None, 'status': 'idle'}
 scan_lock  = threading.Lock()
 
-# ─── Simulation state ─────────────────────────────────────────
+# ─── Simulation state (normal) ────────────────────────────────
 SIM_BUDGET_PER_COIN = 1000.0   # USD per coin
 
 sim_state = {
@@ -48,6 +54,20 @@ sim_state = {
     'total_realized_pnl': 0.0,
 }
 sim_lock = threading.Lock()
+
+# ─── Simulation state (MEME) ──────────────────────────────────
+meme_sim_state = {
+    'running':    False,
+    'started_at': None,
+    'budget':     SIM_BUDGET_PER_COIN,
+    'positions':  {},
+    'trades':     [],
+    'signals':    {},
+    'last_check': None,
+    'next_check': None,
+    'total_realized_pnl': 0.0,
+}
+meme_sim_lock = threading.Lock()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -322,6 +342,95 @@ def simulation_loop():
 
 
 # ═══════════════════════════════════════════════════════════════
+# MEME Simulation loop
+# ═══════════════════════════════════════════════════════════════
+
+def meme_sim_tick():
+    with meme_sim_lock:
+        if not meme_sim_state['running']:
+            return
+
+    for coin in MEME_COINS:
+        sig, stop, price = ut_bot(coin, '15m')
+        if price is None:
+            continue
+
+        with meme_sim_lock:
+            budget = meme_sim_state['budget']
+            in_pos = coin in meme_sim_state['positions']
+
+        if sig == 'BUY' and not in_pos:
+            qty  = budget / price
+            entry = {
+                'entry_price':     price,
+                'entry_price_fmt': fmt_price(price),
+                'entry_time':      now_iso(),
+                'entry_ts':        now_ts(),
+                'qty':             qty,
+                'cost':            budget,
+                'stop':            stop,
+                'stop_fmt':        fmt_price(stop),
+            }
+            with meme_sim_lock:
+                meme_sim_state['positions'][coin] = entry
+
+        elif sig in ('SELL', 'SELL_HOLD') and in_pos:
+            with meme_sim_lock:
+                pos = meme_sim_state['positions'].pop(coin)
+
+            revenue   = pos['qty'] * price
+            pnl       = revenue - pos['cost']
+            pnl_pct   = (pnl / pos['cost']) * 100
+            duration_s = now_ts() - pos['entry_ts']
+            hours = int(duration_s // 3600)
+            mins  = int((duration_s % 3600) // 60)
+
+            trade = {
+                'coin':            coin,
+                'entry_price':     pos['entry_price'],
+                'entry_price_fmt': pos['entry_price_fmt'],
+                'exit_price':      price,
+                'exit_price_fmt':  fmt_price(price),
+                'entry_time':      pos['entry_time'],
+                'exit_time':       now_iso(),
+                'qty':             pos['qty'],
+                'cost':            pos['cost'],
+                'revenue':         revenue,
+                'pnl':             round(pnl, 4),
+                'pnl_pct':         round(pnl_pct, 2),
+                'pnl_fmt':         f"{'+'if pnl>=0 else ''}{pnl:.2f}$",
+                'duration':        f"{hours}s {mins}dk",
+                'win':             pnl >= 0,
+                'trigger_sig':     sig,
+            }
+
+            with meme_sim_lock:
+                meme_sim_state['trades'].insert(0, trade)
+                meme_sim_state['total_realized_pnl'] = round(
+                    meme_sim_state['total_realized_pnl'] + pnl, 4
+                )
+
+        with meme_sim_lock:
+            meme_sim_state['signals'][coin] = sig
+
+    with meme_sim_lock:
+        meme_sim_state['last_check'] = now_ts()
+        meme_sim_state['next_check'] = now_ts() + 900
+
+
+def meme_simulation_loop():
+    while True:
+        with meme_sim_lock:
+            running = meme_sim_state['running']
+        if running:
+            try:
+                meme_sim_tick()
+            except Exception as e:
+                print(f"[MEME SIM ERROR] {e}")
+        time.sleep(900)
+
+
+# ═══════════════════════════════════════════════════════════════
 # Flask routes — Scanner
 # ═══════════════════════════════════════════════════════════════
 
@@ -464,11 +573,116 @@ def api_sim_reset():
 
 
 # ═══════════════════════════════════════════════════════════════
+# Flask routes — MEME Simulation
+# ═══════════════════════════════════════════════════════════════
+
+@app.route('/api/meme/state')
+def api_meme_state():
+    with meme_sim_lock:
+        state = dict(meme_sim_state)
+
+    enriched_positions = {}
+    for coin, pos in state['positions'].items():
+        cur = fetch_price(coin)
+        if cur:
+            unreal     = (cur - pos['entry_price']) * pos['qty']
+            unreal_pct = ((cur - pos['entry_price']) / pos['entry_price']) * 100
+        else:
+            cur, unreal, unreal_pct = pos['entry_price'], 0, 0
+
+        enriched_positions[coin] = {
+            **pos,
+            'current_price':      cur,
+            'current_price_fmt':  fmt_price(cur),
+            'unrealized_pnl':     round(unreal, 4),
+            'unrealized_pnl_pct': round(unreal_pct, 2),
+            'unrealized_fmt':     f"{'+'if unreal>=0 else ''}{unreal:.2f}$",
+        }
+
+    total_unrealized = sum(p['unrealized_pnl'] for p in enriched_positions.values())
+    trades = state['trades']
+    wins   = [t for t in trades if t['win']]
+    losses = [t for t in trades if not t['win']]
+
+    return jsonify({
+        'running':     state['running'],
+        'started_at':  state['started_at'],
+        'budget':      state['budget'],
+        'last_check':  state['last_check'],
+        'next_check':  state['next_check'],
+        'positions':   enriched_positions,
+        'trades':      trades,
+        'signals':     state['signals'],
+        'stats': {
+            'total_trades':         len(trades),
+            'open_positions':       len(enriched_positions),
+            'wins':                 len(wins),
+            'losses':               len(losses),
+            'win_rate':             round(len(wins)/len(trades)*100, 1) if trades else 0,
+            'total_realized_pnl':   state['total_realized_pnl'],
+            'total_realized_fmt':   f"{'+'if state['total_realized_pnl']>=0 else ''}{state['total_realized_pnl']:.2f}$",
+            'total_unrealized_pnl': round(total_unrealized, 4),
+            'total_unrealized_fmt': f"{'+'if total_unrealized>=0 else ''}{total_unrealized:.2f}$",
+            'total_pnl':            round(state['total_realized_pnl'] + total_unrealized, 4),
+            'total_pnl_fmt':        f"{'+'if (state['total_realized_pnl']+total_unrealized)>=0 else ''}{(state['total_realized_pnl']+total_unrealized):.2f}$",
+            'best_trade':           max(trades, key=lambda t: t['pnl'])['coin'] if trades else '—',
+            'best_pnl':             max(trades, key=lambda t: t['pnl'])['pnl'] if trades else 0,
+            'worst_trade':          min(trades, key=lambda t: t['pnl'])['coin'] if trades else '—',
+            'worst_pnl':            min(trades, key=lambda t: t['pnl'])['pnl'] if trades else 0,
+        }
+    })
+
+
+@app.route('/api/meme/start', methods=['POST'])
+def api_meme_start():
+    body   = request.get_json(silent=True) or {}
+    budget = float(body.get('budget', SIM_BUDGET_PER_COIN))
+
+    with meme_sim_lock:
+        if meme_sim_state['running']:
+            return jsonify({'status': 'already running'})
+        meme_sim_state['running']    = True
+        meme_sim_state['started_at'] = now_iso()
+        meme_sim_state['budget']     = budget
+
+    def first_tick():
+        try:
+            meme_sim_tick()
+        except Exception as e:
+            print(f"[MEME SIM FIRST TICK] {e}")
+    threading.Thread(target=first_tick, daemon=True).start()
+    return jsonify({'status': 'started', 'budget': budget})
+
+
+@app.route('/api/meme/stop', methods=['POST'])
+def api_meme_stop():
+    with meme_sim_lock:
+        meme_sim_state['running'] = False
+    return jsonify({'status': 'stopped'})
+
+
+@app.route('/api/meme/reset', methods=['POST'])
+def api_meme_reset():
+    with meme_sim_lock:
+        meme_sim_state['running']            = False
+        meme_sim_state['started_at']         = None
+        meme_sim_state['positions']          = {}
+        meme_sim_state['trades']             = []
+        meme_sim_state['signals']            = {}
+        meme_sim_state['last_check']         = None
+        meme_sim_state['next_check']         = None
+        meme_sim_state['total_realized_pnl'] = 0.0
+        meme_sim_state['budget']             = SIM_BUDGET_PER_COIN
+    return jsonify({'status': 'reset'})
+
+
+# ═══════════════════════════════════════════════════════════════
 # Start background threads
 # ═══════════════════════════════════════════════════════════════
 
 if __name__ == '__main__':
-    threading.Thread(target=background_scanner, daemon=True).start()
-    threading.Thread(target=simulation_loop,    daemon=True).start()
+    threading.Thread(target=background_scanner,   daemon=True).start()
+    threading.Thread(target=simulation_loop,      daemon=True).start()
+    threading.Thread(target=meme_simulation_loop, daemon=True).start()
     print("Kripto UT Bot Tarayici + Simulasyon: http://localhost:5050")
     app.run(host='0.0.0.0', port=5050, debug=False)
