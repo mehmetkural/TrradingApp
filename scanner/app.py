@@ -29,6 +29,12 @@ TOP100 = [
 COINS = list(dict.fromkeys([c for c in TOP100 if c not in EXCLUDE]))
 TIMEFRAMES = ['15m', '1h', '2h', '4h']
 
+# Binance'da farklı sembol adı olan coinler
+SYMBOL_OVERRIDE = {'BABYDOGE': '1000BABYDOGE'}
+
+def binance_sym(symbol):
+    return (SYMBOL_OVERRIDE.get(symbol) or symbol) + 'USDT'
+
 MEME_COINS = [
     'DOGE','SHIB','PEPE','BONK','FLOKI','WIF','MEME','BRETT',
     'TURBO','BOME','POPCAT','NEIRO','PNUT','ACT','GOAT','DOGS',
@@ -75,7 +81,7 @@ meme_sim_lock = threading.Lock()
 # ═══════════════════════════════════════════════════════════════
 
 def fetch_klines(symbol, interval, limit=60):
-    url = f"https://api.binance.com/api/v3/klines?symbol={symbol}USDT&interval={interval}&limit={limit}"
+    url = f"https://api.binance.com/api/v3/klines?symbol={binance_sym(symbol)}&interval={interval}&limit={limit}"
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=8) as r:
@@ -85,7 +91,7 @@ def fetch_klines(symbol, interval, limit=60):
 
 
 def fetch_price(symbol):
-    url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}USDT"
+    url = f"https://api.binance.com/api/v3/ticker/price?symbol={binance_sym(symbol)}"
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=5) as r:
@@ -231,6 +237,14 @@ def background_scanner():
                 scan_cache['last_scan'] = now
                 scan_cache['next_scan'] = now + 900
                 scan_cache['status'] = 'done'
+            # Scan bitince meme sim de tetikle
+            with meme_sim_lock:
+                meme_running = meme_sim_state['running']
+            if meme_running:
+                try:
+                    meme_sim_tick()
+                except Exception as e:
+                    print(f"[MEME SIM SCAN TRIGGER] {e}")
         except Exception as e:
             with scan_lock:
                 scan_cache['status'] = f'error: {e}'
