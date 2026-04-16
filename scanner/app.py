@@ -359,19 +359,32 @@ def simulation_loop():
 # MEME Simulation loop
 # ═══════════════════════════════════════════════════════════════
 
+MEME_STOP_LOSS_PCT = 0.08   # %8 stop-loss
+
 def meme_sim_tick():
     with meme_sim_lock:
         if not meme_sim_state['running']:
             return
 
     for coin in MEME_COINS:
-        sig, stop, price = ut_bot(coin, '15m')
+        # 1h timeframe, ATR mult=2.0 — daha az gürültü
+        sig, stop, price = ut_bot(coin, '1h', mult=2.0)
         if price is None:
             continue
 
         with meme_sim_lock:
             budget = meme_sim_state['budget']
             in_pos = coin in meme_sim_state['positions']
+            pos    = meme_sim_state['positions'].get(coin)
+
+        # ── Stop-loss kontrolü ────────────────────────────────
+        sl_triggered = (
+            in_pos and
+            price <= pos['entry_price'] * (1 - MEME_STOP_LOSS_PCT)
+        )
+
+        # ── Çıkış: sadece gerçek SELL dönüşü veya stop-loss ──
+        should_exit = in_pos and (sig == 'SELL' or sl_triggered)
 
         if sig == 'BUY' and not in_pos:
             qty  = budget / price
@@ -388,7 +401,7 @@ def meme_sim_tick():
             with meme_sim_lock:
                 meme_sim_state['positions'][coin] = entry
 
-        elif sig in ('SELL', 'SELL_HOLD') and in_pos:
+        elif should_exit:
             with meme_sim_lock:
                 pos = meme_sim_state['positions'].pop(coin)
 
@@ -398,6 +411,7 @@ def meme_sim_tick():
             duration_s = now_ts() - pos['entry_ts']
             hours = int(duration_s // 3600)
             mins  = int((duration_s % 3600) // 60)
+            exit_reason = 'STOP_LOSS' if sl_triggered else sig
 
             trade = {
                 'coin':            coin,
@@ -415,7 +429,7 @@ def meme_sim_tick():
                 'pnl_fmt':         f"{'+'if pnl>=0 else ''}{pnl:.2f}$",
                 'duration':        f"{hours}s {mins}dk",
                 'win':             pnl >= 0,
-                'trigger_sig':     sig,
+                'trigger_sig':     exit_reason,
             }
 
             with meme_sim_lock:

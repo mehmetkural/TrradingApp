@@ -436,6 +436,7 @@ function sigBadge(sig) {
     'BUY_HOLD':  ['sig-buy-hold',  'HOLD'],
     'SELL':      ['sig-sell',      'SELL'],
     'SELL_HOLD': ['sig-sell-hold', 'S.HOLD'],
+    'STOP_LOSS': ['sig-sell',      'STOP'],
     'NEUTRAL':   ['sig-neutral',   'NÖTR'],
     'NO_DATA':   ['sig-nodata',    'N/A'],
   };
@@ -821,7 +822,7 @@ async function memeStart() {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ budget })
   });
-  toast('MEME Simülasyonu Başladı', `Her coin için $${budget} bütçe. 15dk'da bir kontrol.`);
+  toast('MEME Simülasyonu Başladı', `Her coin için $${budget} bütçe. 1h UT Bot · %8 stop-loss.`);
   pollMemeSim();
 }
 
