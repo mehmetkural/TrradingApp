@@ -927,6 +927,7 @@ async function startScan() {
   scanning=false;
   renderScanner();
   if(sim.running) simTick();
+  if(memeSim.running) memeSimTick();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1271,6 +1272,7 @@ setInterval(()=>{
 setInterval(()=>{if(!scanning) startScan();},SCAN_INTERVAL_MS);
 setInterval(()=>{if(sim.running||Object.keys(sim.positions).length) renderSim();},SIM_REFRESH_MS);
 setInterval(()=>{if(memeSim.running||Object.keys(memeSim.positions).length) renderMemeSim();},SIM_REFRESH_MS);
+setInterval(()=>{if(memeSim.running) memeSimTick();},SCAN_INTERVAL_MS);
 
 renderSim();
 renderMemeSim();
