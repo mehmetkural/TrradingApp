@@ -23,7 +23,7 @@ TOP100 = [
     'APT','FLR','ZRO','ARB','VET','JUP','FET','BONK','CAKE','DASH',
     'VIRTUAL','PENGU','STX','CHZ','XTZ','SEI','CRV','GNO','PI','MNT',
     'MORPHO','DEXE','JST','NEXO','SUN','DCR','ETHFI','SKY','MON',
-    'LINK','DOT','ATOM','ALGO','VET','ZEC'
+    'INJ','SUPER','ARKM','PYTH','ENS','RSR','GALA','PIXEL'
 ]
 
 COINS = list(dict.fromkeys([c for c in TOP100 if c not in EXCLUDE]))
@@ -32,7 +32,7 @@ TIMEFRAMES = ['15m', '1h', '2h', '4h']
 MEME_COINS = [
     'DOGE','SHIB','PEPE','BONK','FLOKI','WIF','MEME','BRETT',
     'TURBO','BOME','POPCAT','NEIRO','PNUT','ACT','GOAT','DOGS',
-    'PENGU','TRUMP','BABYDOGE',
+    'PENGU','TRUMP','BABYDOGE','GROK',
 ]
 
 # ─── Scanner state ────────────────────────────────────────────
