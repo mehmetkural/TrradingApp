@@ -255,61 +255,67 @@ def background_scanner():
 # Simulation loop
 # ═══════════════════════════════════════════════════════════════
 
+SIM_STOP_LOSS_PCT = 0.08   # %8 stop-loss
+
 def sim_tick():
     """
-    Check 15m UT Bot signal for every coin.
-    BUY  → open position if none open
-    SELL / SELL_HOLD → close position if open
+    Check 1h UT Bot signal (mult=2.0) for every coin.
+    BUY       → open position if none open
+    SELL      → close position (real reversal only, not SELL_HOLD)
+    STOP_LOSS → close if price drops -%8 from entry
     """
     with sim_lock:
         if not sim_state['running']:
             return
 
-    new_signals  = {}
-    opened_now   = []
-    closed_now   = []
-
     for coin in COINS:
-        sig, stop, price = ut_bot(coin, '15m')
+        # 1h timeframe, ATR mult=2.0 — daha az gürültü
+        sig, stop, price = ut_bot(coin, '1h', mult=2.0)
         if price is None:
             continue
 
-        new_signals[coin] = sig
-
         with sim_lock:
-            prev_sig = sim_state['signals'].get(coin)
-            budget   = sim_state['budget']
-            in_pos   = coin in sim_state['positions']
+            budget = sim_state['budget']
+            in_pos = coin in sim_state['positions']
+            pos    = sim_state['positions'].get(coin)
+
+        # ── Stop-loss kontrolü ────────────────────────────────
+        sl_triggered = (
+            in_pos and
+            price <= pos['entry_price'] * (1 - SIM_STOP_LOSS_PCT)
+        )
+
+        # ── Çıkış: sadece gerçek SELL dönüşü veya stop-loss ──
+        should_exit = in_pos and (sig == 'SELL' or sl_triggered)
 
         # ── Open long ──────────────────────────────────────────
         if sig == 'BUY' and not in_pos:
             qty  = budget / price
-            cost = budget
             entry = {
                 'entry_price': price,
                 'entry_price_fmt': fmt_price(price),
                 'entry_time':  now_iso(),
                 'entry_ts':    now_ts(),
                 'qty':         qty,
-                'cost':        cost,
+                'cost':        budget,
                 'stop':        stop,
                 'stop_fmt':    fmt_price(stop),
             }
             with sim_lock:
                 sim_state['positions'][coin] = entry
-            opened_now.append(coin)
 
         # ── Close long ─────────────────────────────────────────
-        elif sig in ('SELL', 'SELL_HOLD') and in_pos:
+        elif should_exit:
             with sim_lock:
                 pos = sim_state['positions'].pop(coin)
 
-            revenue   = pos['qty'] * price
-            pnl       = revenue - pos['cost']
-            pnl_pct   = (pnl / pos['cost']) * 100
+            revenue    = pos['qty'] * price
+            pnl        = revenue - pos['cost']
+            pnl_pct    = (pnl / pos['cost']) * 100
             duration_s = now_ts() - pos['entry_ts']
             hours = int(duration_s // 3600)
             mins  = int((duration_s % 3600) // 60)
+            exit_reason = 'STOP_LOSS' if sl_triggered else sig
 
             trade = {
                 'coin':         coin,
@@ -327,18 +333,19 @@ def sim_tick():
                 'pnl_fmt':      f"{'+'if pnl>=0 else ''}{pnl:.2f}$",
                 'duration':     f"{hours}s {mins}dk",
                 'win':          pnl >= 0,
-                'trigger_sig':  sig,
+                'trigger_sig':  exit_reason,
             }
 
             with sim_lock:
-                sim_state['trades'].insert(0, trade)   # newest first
+                sim_state['trades'].insert(0, trade)
                 sim_state['total_realized_pnl'] = round(
                     sim_state['total_realized_pnl'] + pnl, 4
                 )
-            closed_now.append(coin)
+
+        with sim_lock:
+            sim_state['signals'][coin] = sig
 
     with sim_lock:
-        sim_state['signals'].update(new_signals)
         sim_state['last_check'] = now_ts()
         sim_state['next_check'] = now_ts() + 900
 

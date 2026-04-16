@@ -682,7 +682,7 @@ async function simStart() {
     body: JSON.stringify({ budget })
   });
   const d = await res.json();
-  toast('Simülasyon Başladı', `Her coin için $${budget} bütçe. 15dk'da bir kontrol.`);
+  toast('Simülasyon Başladı', `Her coin için $${budget} bütçe. 1h UT Bot · %8 stop-loss.`);
   pollSim();
 }
 
