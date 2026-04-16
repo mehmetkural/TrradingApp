@@ -151,7 +151,7 @@ aside.collapsed { width: 56px; }
 .sidebar-toggle:hover { background: var(--sc-highest); color: var(--primary); }
 .sidebar-toggle .material-symbols-outlined { font-size: 16px; transition: transform 0.22s; }
 aside.collapsed .sidebar-toggle .material-symbols-outlined { transform: rotate(180deg); }
-aside.collapsed .sidebar-toggle { right: auto; left: 50%; transform: translateX(-50%); top: 14px; }
+aside.collapsed .sidebar-toggle { right: auto; left: 50%; transform: translateX(-50%); top: 52px; }
 
 .sidebar-brand { padding: 20px 20px 12px; white-space: nowrap; overflow: hidden; }
 .sidebar-brand h2 { font-size: 18px; font-weight: 900; color: var(--primary); }
@@ -226,12 +226,15 @@ main { flex: 1; min-width: 0; background: var(--surface); overflow-y: auto; }
 /* compact stat card for sim pages */
 .stat-card-sm {
   background: var(--sc); border-radius: 8px; padding: 10px 12px;
+  display: flex; flex-direction: column; justify-content: center;
 }
 .stat-card-sm .label {
   font-size: 9px; font-weight: 900; letter-spacing: 0.1em;
   color: var(--on-sv); margin-bottom: 4px;
 }
 .stat-card-sm .value { font-size: 18px; font-weight: 900; font-family: ui-monospace, monospace; }
+.stat-card-sm .sub { font-size: 9px; color: var(--on-sv); margin-top: 3px; line-height: 1.5; }
+.stat-card-wallet { min-height: 80px; }
 
 /* ═══ LEGEND ══════════════════════════════════════════════════ */
 .legend { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
@@ -591,12 +594,15 @@ td.num { font-family: ui-monospace, monospace; }
           <div class="label">Açık Pozisyon</div>
           <div id="sOpenPos" class="value mono" style="color:var(--secondary)">0</div>
         </div>
-        <div class="stat-card-sm border-primary" style="border-bottom:2px solid rgba(162,201,255,0.2)">
+      </div>
+      <!-- Wallet row -->
+      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:18px">
+        <div class="stat-card-sm stat-card-wallet border-primary" style="border-bottom:2px solid rgba(162,201,255,0.2);min-width:220px;max-width:280px;flex:1;text-align:center">
           <div class="label">Cüzdan</div>
           <div id="sWallet" class="value mono">—</div>
           <div id="sWalletSub" class="sub"></div>
         </div>
-        <div class="stat-card-sm" style="border-bottom:2px solid rgba(65,71,82,0.2)">
+        <div class="stat-card-sm stat-card-wallet" style="border-bottom:2px solid rgba(65,71,82,0.2);min-width:220px;max-width:280px;flex:1;text-align:center">
           <div class="label">Serbest / Kilitli</div>
           <div id="sFreeBudget" class="value mono">—</div>
           <div id="sTradeAmount" class="sub"></div>
@@ -697,12 +703,15 @@ td.num { font-family: ui-monospace, monospace; }
           <div class="label">Açık Pozisyon</div>
           <div id="mOpenPos" class="value mono" style="color:var(--secondary)">0</div>
         </div>
-        <div class="stat-card-sm" style="border-bottom:2px solid rgba(216,186,255,0.25)">
+      </div>
+      <!-- Wallet row -->
+      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:18px">
+        <div class="stat-card-sm stat-card-wallet" style="border-bottom:2px solid rgba(216,186,255,0.25);min-width:220px;max-width:280px;flex:1;text-align:center">
           <div class="label">Cüzdan</div>
           <div id="mWallet" class="value mono">—</div>
           <div id="mWalletSub" class="sub"></div>
         </div>
-        <div class="stat-card-sm" style="border-bottom:2px solid rgba(65,71,82,0.2)">
+        <div class="stat-card-sm stat-card-wallet" style="border-bottom:2px solid rgba(65,71,82,0.2);min-width:220px;max-width:280px;flex:1;text-align:center">
           <div class="label">Serbest / Kilitli</div>
           <div id="mFreeBudget" class="value mono">—</div>
           <div id="mTradeAmount" class="sub"></div>
