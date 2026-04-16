@@ -248,8 +248,10 @@
 
   <!-- Controls -->
   <div class="sim-controls">
-    <label>Coin başına bütçe (USD):</label>
+    <label>Toplam bütçe (USD):</label>
     <input type="number" class="sim-input" id="simBudget" value="1000" min="10" step="10"/>
+    <label style="margin-left:8px">İşlem %:</label>
+    <input type="number" class="sim-input" id="simTradePct" value="10" min="1" max="100" step="1" style="width:60px"/>
     <button class="btn" id="simStartBtn" onclick="simStart()">▶ Başlat</button>
     <button class="btn btn-red" id="simStopBtn" onclick="simStop()" style="display:none">⏹ Durdur</button>
     <button class="btn btn-gray" id="simResetBtn" onclick="simReset()">↺ Sıfırla</button>
@@ -280,6 +282,16 @@
       <div class="card-label">Açık Pozisyon</div>
       <div class="card-value cv-purple" id="sOpenPos">—</div>
     </div>
+    <div class="card">
+      <div class="card-label">Cüzdan</div>
+      <div class="card-value" id="sWallet">—</div>
+      <div class="card-sub" id="sWalletSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Serbest / Kilitli</div>
+      <div class="card-value cv-blue" id="sFreeBudget">—</div>
+      <div class="card-sub" id="sTradeAmount"></div>
+    </div>
   </div>
 
   <!-- Open Positions -->
@@ -303,8 +315,10 @@
 
   <!-- Controls -->
   <div class="sim-controls">
-    <label>Coin başına bütçe (USD):</label>
+    <label>Toplam bütçe (USD):</label>
     <input type="number" class="sim-input" id="memeBudget" value="1000" min="10" step="10"/>
+    <label style="margin-left:8px">İşlem %:</label>
+    <input type="number" class="sim-input" id="memeTradePct" value="10" min="1" max="100" step="1" style="width:60px"/>
     <button class="btn" id="memeStartBtn" onclick="memeStart()">▶ Başlat</button>
     <button class="btn btn-red" id="memeStopBtn" onclick="memeStop()" style="display:none">⏹ Durdur</button>
     <button class="btn btn-gray" id="memeResetBtn" onclick="memeReset()">↺ Sıfırla</button>
@@ -335,6 +349,16 @@
     <div class="card">
       <div class="card-label">Açık Pozisyon</div>
       <div class="card-value cv-purple" id="mOpenPos">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Cüzdan</div>
+      <div class="card-value" id="mWallet">—</div>
+      <div class="card-sub" id="mWalletSub"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Serbest / Kilitli</div>
+      <div class="card-value cv-blue" id="mFreeBudget">—</div>
+      <div class="card-sub" id="mTradeAmount"></div>
     </div>
   </div>
 
@@ -557,7 +581,8 @@ function renderSim(data) {
   pill.className   = 'sim-status-pill ' + (running ? 'on' : 'off');
   document.getElementById('simStartBtn').style.display = running ? 'none' : '';
   document.getElementById('simStopBtn').style.display  = running ? '' : 'none';
-  document.getElementById('simBudget').disabled = running;
+  document.getElementById('simBudget').disabled    = running;
+  document.getElementById('simTradePct').disabled  = running;
   if (data.started_at)
     document.getElementById('simStartedAt').textContent = 'Başlangıç: ' + data.started_at;
 
@@ -600,6 +625,23 @@ function renderSim(data) {
   tEl.className   = 'card-value ' + pnlClass(tPnl);
   document.getElementById('sTotalPnlSub').textContent =
     s.total_trades ? `En iyi: ${s.best_trade} (${s.best_pnl>0?'+':''}${s.best_pnl}$)` : '';
+
+  // Wallet & budget cards
+  const walletEl = document.getElementById('sWallet');
+  const walletChange = data.budget_change ?? 0;
+  walletEl.textContent = data.budget != null ? `$${data.budget.toFixed(2)}` : '—';
+  walletEl.className   = 'card-value ' + pnlClass(walletChange);
+  document.getElementById('sWalletSub').textContent =
+    data.budget_change_fmt ? `Başlangıç: $${(data.initial_budget||0).toFixed(2)} (${data.budget_change_fmt})` : '';
+
+  const freeEl = document.getElementById('sFreeBudget');
+  freeEl.textContent = data.free_budget != null
+    ? `$${(data.free_budget||0).toFixed(2)} / $${(data.locked_budget||0).toFixed(2)}`
+    : '—';
+  document.getElementById('sTradeAmount').textContent =
+    data.trade_pct != null
+      ? `İşlem başına: $${(data.trade_amount||0).toFixed(2)} (%${Math.round((data.trade_pct||0)*100)})`
+      : '';
 
   // Open positions table
   const positions = data.positions || {};
@@ -675,14 +717,16 @@ function renderSim(data) {
 // Simulation controls
 // ═══════════════════════════════════════════════════════════════
 async function simStart() {
-  const budget = parseFloat(document.getElementById('simBudget').value) || 1000;
+  const budget    = parseFloat(document.getElementById('simBudget').value) || 1000;
+  const tradePct  = parseFloat(document.getElementById('simTradePct').value) || 10;
   const res = await fetch('/api/sim/start', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ budget })
+    body: JSON.stringify({ budget, trade_pct: tradePct / 100 })
   });
   const d = await res.json();
-  toast('Simülasyon Başladı', `Her coin için $${budget} bütçe. 1h UT Bot · %8 stop-loss.`);
+  toast('Simülasyon Başladı',
+    `Bütçe: $${budget} · İşlem başına: $${d.trade_amount} (%${tradePct}) · %8 stop-loss`);
   pollSim();
 }
 
@@ -714,7 +758,8 @@ function renderMemeSim(data) {
   pill.className   = 'sim-status-pill ' + (running ? 'on' : 'off');
   document.getElementById('memeStartBtn').style.display = running ? 'none' : '';
   document.getElementById('memeStopBtn').style.display  = running ? '' : 'none';
-  document.getElementById('memeBudget').disabled = running;
+  document.getElementById('memeBudget').disabled   = running;
+  document.getElementById('memeTradePct').disabled  = running;
   if (data.started_at)
     document.getElementById('memeStartedAt').textContent = 'Başlangıç: ' + data.started_at;
 
@@ -741,6 +786,23 @@ function renderMemeSim(data) {
   tEl.className   = 'card-value ' + pnlClass(tPnl);
   document.getElementById('mTotalPnlSub').textContent =
     s.total_trades ? `En iyi: ${s.best_trade} (${s.best_pnl>0?'+':''}${s.best_pnl}$)` : '';
+
+  // Wallet & budget cards
+  const mWalletEl = document.getElementById('mWallet');
+  const mWalletChange = data.budget_change ?? 0;
+  mWalletEl.textContent = data.budget != null ? `$${data.budget.toFixed(2)}` : '—';
+  mWalletEl.className   = 'card-value ' + pnlClass(mWalletChange);
+  document.getElementById('mWalletSub').textContent =
+    data.budget_change_fmt ? `Başlangıç: $${(data.initial_budget||0).toFixed(2)} (${data.budget_change_fmt})` : '';
+
+  const mFreeEl = document.getElementById('mFreeBudget');
+  mFreeEl.textContent = data.free_budget != null
+    ? `$${(data.free_budget||0).toFixed(2)} / $${(data.locked_budget||0).toFixed(2)}`
+    : '—';
+  document.getElementById('mTradeAmount').textContent =
+    data.trade_pct != null
+      ? `İşlem başına: $${(data.trade_amount||0).toFixed(2)} (%${Math.round((data.trade_pct||0)*100)})`
+      : '';
 
   // Open positions
   const positions = data.positions || {};
@@ -816,13 +878,16 @@ function renderMemeSim(data) {
 // MEME Simulation controls
 // ═══════════════════════════════════════════════════════════════
 async function memeStart() {
-  const budget = parseFloat(document.getElementById('memeBudget').value) || 1000;
-  await fetch('/api/meme/start', {
+  const budget   = parseFloat(document.getElementById('memeBudget').value) || 1000;
+  const tradePct = parseFloat(document.getElementById('memeTradePct').value) || 10;
+  const res = await fetch('/api/meme/start', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ budget })
+    body: JSON.stringify({ budget, trade_pct: tradePct / 100 })
   });
-  toast('MEME Simülasyonu Başladı', `Her coin için $${budget} bütçe. 1h UT Bot · %8 stop-loss.`);
+  const d = await res.json();
+  toast('MEME Simülasyonu Başladı',
+    `Bütçe: $${budget} · İşlem başına: $${d.trade_amount} (%${tradePct}) · %8 stop-loss`);
   pollMemeSim();
 }
 

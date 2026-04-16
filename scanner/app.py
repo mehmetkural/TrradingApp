@@ -46,31 +46,36 @@ scan_cache = {'last_scan': None, 'next_scan': None, 'results': None, 'status': '
 scan_lock  = threading.Lock()
 
 # ─── Simulation state (normal) ────────────────────────────────
-SIM_BUDGET_PER_COIN = 1000.0   # USD per coin
+SIM_DEFAULT_BUDGET    = 1000.0  # USD toplam bütçe
+SIM_DEFAULT_TRADE_PCT = 0.10    # işlem başına bütçenin %10'u
 
 sim_state = {
-    'running':    False,
-    'started_at': None,
-    'budget':     SIM_BUDGET_PER_COIN,
-    'positions':  {},   # coin -> {entry_price, entry_time, qty, cost}
-    'trades':     [],   # list of closed trades
-    'signals':    {},   # coin -> last seen 15m signal
-    'last_check': None,
-    'next_check': None,
+    'running':        False,
+    'started_at':     None,
+    'budget':         SIM_DEFAULT_BUDGET,   # canlı cüzdan (P&L ile değişir)
+    'initial_budget': SIM_DEFAULT_BUDGET,   # başlangıç referansı
+    'trade_pct':      SIM_DEFAULT_TRADE_PCT,
+    'positions':      {},   # coin -> {entry_price, entry_time, qty, cost}
+    'trades':         [],   # list of closed trades
+    'signals':        {},   # coin -> last seen signal
+    'last_check':     None,
+    'next_check':     None,
     'total_realized_pnl': 0.0,
 }
 sim_lock = threading.Lock()
 
 # ─── Simulation state (MEME) ──────────────────────────────────
 meme_sim_state = {
-    'running':    False,
-    'started_at': None,
-    'budget':     SIM_BUDGET_PER_COIN,
-    'positions':  {},
-    'trades':     [],
-    'signals':    {},
-    'last_check': None,
-    'next_check': None,
+    'running':        False,
+    'started_at':     None,
+    'budget':         SIM_DEFAULT_BUDGET,
+    'initial_budget': SIM_DEFAULT_BUDGET,
+    'trade_pct':      SIM_DEFAULT_TRADE_PCT,
+    'positions':      {},
+    'trades':         [],
+    'signals':        {},
+    'last_check':     None,
+    'next_check':     None,
     'total_realized_pnl': 0.0,
 }
 meme_sim_lock = threading.Lock()
@@ -260,9 +265,10 @@ SIM_STOP_LOSS_PCT = 0.08   # %8 stop-loss
 def sim_tick():
     """
     Check 1h UT Bot signal (mult=2.0) for every coin.
-    BUY       → open position if none open
+    BUY       → open position using trade_pct of total budget
     SELL      → close position (real reversal only, not SELL_HOLD)
     STOP_LOSS → close if price drops -%8 from entry
+    P&L updates the total budget dynamically.
     """
     with sim_lock:
         if not sim_state['running']:
@@ -275,9 +281,14 @@ def sim_tick():
             continue
 
         with sim_lock:
-            budget = sim_state['budget']
-            in_pos = coin in sim_state['positions']
-            pos    = sim_state['positions'].get(coin)
+            budget    = sim_state['budget']
+            trade_pct = sim_state['trade_pct']
+            locked    = sum(p['cost'] for p in sim_state['positions'].values())
+            free      = budget - locked
+            in_pos    = coin in sim_state['positions']
+            pos       = sim_state['positions'].get(coin)
+
+        trade_cost = round(budget * trade_pct, 4)
 
         # ── Stop-loss kontrolü ────────────────────────────────
         sl_triggered = (
@@ -289,17 +300,17 @@ def sim_tick():
         should_exit = in_pos and (sig == 'SELL' or sl_triggered)
 
         # ── Open long ──────────────────────────────────────────
-        if sig == 'BUY' and not in_pos:
-            qty  = budget / price
+        if sig == 'BUY' and not in_pos and free >= trade_cost and trade_cost > 0:
+            qty   = trade_cost / price
             entry = {
-                'entry_price': price,
+                'entry_price':     price,
                 'entry_price_fmt': fmt_price(price),
-                'entry_time':  now_iso(),
-                'entry_ts':    now_ts(),
-                'qty':         qty,
-                'cost':        budget,
-                'stop':        stop,
-                'stop_fmt':    fmt_price(stop),
+                'entry_time':      now_iso(),
+                'entry_ts':        now_ts(),
+                'qty':             qty,
+                'cost':            trade_cost,
+                'stop':            stop,
+                'stop_fmt':        fmt_price(stop),
             }
             with sim_lock:
                 sim_state['positions'][coin] = entry
@@ -318,22 +329,22 @@ def sim_tick():
             exit_reason = 'STOP_LOSS' if sl_triggered else sig
 
             trade = {
-                'coin':         coin,
-                'entry_price':  pos['entry_price'],
+                'coin':            coin,
+                'entry_price':     pos['entry_price'],
                 'entry_price_fmt': pos['entry_price_fmt'],
-                'exit_price':   price,
-                'exit_price_fmt': fmt_price(price),
-                'entry_time':   pos['entry_time'],
-                'exit_time':    now_iso(),
-                'qty':          pos['qty'],
-                'cost':         pos['cost'],
-                'revenue':      revenue,
-                'pnl':          round(pnl, 4),
-                'pnl_pct':      round(pnl_pct, 2),
-                'pnl_fmt':      f"{'+'if pnl>=0 else ''}{pnl:.2f}$",
-                'duration':     f"{hours}s {mins}dk",
-                'win':          pnl >= 0,
-                'trigger_sig':  exit_reason,
+                'exit_price':      price,
+                'exit_price_fmt':  fmt_price(price),
+                'entry_time':      pos['entry_time'],
+                'exit_time':       now_iso(),
+                'qty':             pos['qty'],
+                'cost':            pos['cost'],
+                'revenue':         revenue,
+                'pnl':             round(pnl, 4),
+                'pnl_pct':         round(pnl_pct, 2),
+                'pnl_fmt':         f"{'+'if pnl>=0 else ''}{pnl:.2f}$",
+                'duration':        f"{hours}s {mins}dk",
+                'win':             pnl >= 0,
+                'trigger_sig':     exit_reason,
             }
 
             with sim_lock:
@@ -341,6 +352,7 @@ def sim_tick():
                 sim_state['total_realized_pnl'] = round(
                     sim_state['total_realized_pnl'] + pnl, 4
                 )
+                sim_state['budget'] = round(sim_state['budget'] + pnl, 4)
 
         with sim_lock:
             sim_state['signals'][coin] = sig
@@ -380,9 +392,14 @@ def meme_sim_tick():
             continue
 
         with meme_sim_lock:
-            budget = meme_sim_state['budget']
-            in_pos = coin in meme_sim_state['positions']
-            pos    = meme_sim_state['positions'].get(coin)
+            budget    = meme_sim_state['budget']
+            trade_pct = meme_sim_state['trade_pct']
+            locked    = sum(p['cost'] for p in meme_sim_state['positions'].values())
+            free      = budget - locked
+            in_pos    = coin in meme_sim_state['positions']
+            pos       = meme_sim_state['positions'].get(coin)
+
+        trade_cost = round(budget * trade_pct, 4)
 
         # ── Stop-loss kontrolü ────────────────────────────────
         sl_triggered = (
@@ -393,15 +410,15 @@ def meme_sim_tick():
         # ── Çıkış: sadece gerçek SELL dönüşü veya stop-loss ──
         should_exit = in_pos and (sig == 'SELL' or sl_triggered)
 
-        if sig == 'BUY' and not in_pos:
-            qty  = budget / price
+        if sig == 'BUY' and not in_pos and free >= trade_cost and trade_cost > 0:
+            qty   = trade_cost / price
             entry = {
                 'entry_price':     price,
                 'entry_price_fmt': fmt_price(price),
                 'entry_time':      now_iso(),
                 'entry_ts':        now_ts(),
                 'qty':             qty,
-                'cost':            budget,
+                'cost':            trade_cost,
                 'stop':            stop,
                 'stop_fmt':        fmt_price(stop),
             }
@@ -412,9 +429,9 @@ def meme_sim_tick():
             with meme_sim_lock:
                 pos = meme_sim_state['positions'].pop(coin)
 
-            revenue   = pos['qty'] * price
-            pnl       = revenue - pos['cost']
-            pnl_pct   = (pnl / pos['cost']) * 100
+            revenue    = pos['qty'] * price
+            pnl        = revenue - pos['cost']
+            pnl_pct    = (pnl / pos['cost']) * 100
             duration_s = now_ts() - pos['entry_ts']
             hours = int(duration_s // 3600)
             mins  = int((duration_s % 3600) // 60)
@@ -444,6 +461,7 @@ def meme_sim_tick():
                 meme_sim_state['total_realized_pnl'] = round(
                     meme_sim_state['total_realized_pnl'] + pnl, 4
                 )
+                meme_sim_state['budget'] = round(meme_sim_state['budget'] + pnl, 4)
 
         with meme_sim_lock:
             meme_sim_state['signals'][coin] = sig
@@ -534,15 +552,27 @@ def api_sim_state():
     wins   = [t for t in trades if t['win']]
     losses = [t for t in trades if not t['win']]
 
+    locked_budget = sum(p['cost'] for p in enriched_positions.values())
+    free_budget   = round(state['budget'] - locked_budget, 4)
+    trade_amount  = round(state['budget'] * state['trade_pct'], 4)
+    budget_change = round(state['budget'] - state['initial_budget'], 4)
+
     return jsonify({
-        'running':     state['running'],
-        'started_at':  state['started_at'],
-        'budget':      state['budget'],
-        'last_check':  state['last_check'],
-        'next_check':  state['next_check'],
-        'positions':   enriched_positions,
-        'trades':      trades,
-        'signals':     state['signals'],
+        'running':        state['running'],
+        'started_at':     state['started_at'],
+        'budget':         state['budget'],
+        'initial_budget': state['initial_budget'],
+        'trade_pct':      state['trade_pct'],
+        'trade_amount':   trade_amount,
+        'free_budget':    free_budget,
+        'locked_budget':  locked_budget,
+        'budget_change':  budget_change,
+        'budget_change_fmt': f"{'+'if budget_change>=0 else ''}{budget_change:.2f}$",
+        'last_check':     state['last_check'],
+        'next_check':     state['next_check'],
+        'positions':      enriched_positions,
+        'trades':         trades,
+        'signals':        state['signals'],
         'stats': {
             'total_trades':       len(trades),
             'open_positions':     len(enriched_positions),
@@ -565,15 +595,19 @@ def api_sim_state():
 
 @app.route('/api/sim/start', methods=['POST'])
 def api_sim_start():
-    body = request.get_json(silent=True) or {}
-    budget = float(body.get('budget', SIM_BUDGET_PER_COIN))
+    body      = request.get_json(silent=True) or {}
+    budget    = float(body.get('budget', SIM_DEFAULT_BUDGET))
+    trade_pct = float(body.get('trade_pct', SIM_DEFAULT_TRADE_PCT))
+    trade_pct = max(0.01, min(trade_pct, 1.0))  # 1% - 100% arası sınırla
 
     with sim_lock:
         if sim_state['running']:
             return jsonify({'status': 'already running'})
-        sim_state['running']    = True
-        sim_state['started_at'] = now_iso()
-        sim_state['budget']     = budget
+        sim_state['running']        = True
+        sim_state['started_at']     = now_iso()
+        sim_state['budget']         = budget
+        sim_state['initial_budget'] = budget
+        sim_state['trade_pct']      = trade_pct
 
     # First tick immediately in background
     def first_tick():
@@ -582,7 +616,8 @@ def api_sim_start():
         except Exception as e:
             print(f"[SIM FIRST TICK] {e}")
     threading.Thread(target=first_tick, daemon=True).start()
-    return jsonify({'status': 'started', 'budget': budget})
+    return jsonify({'status': 'started', 'budget': budget, 'trade_pct': trade_pct,
+                    'trade_amount': round(budget * trade_pct, 2)})
 
 
 @app.route('/api/sim/stop', methods=['POST'])
@@ -603,7 +638,9 @@ def api_sim_reset():
         sim_state['last_check']          = None
         sim_state['next_check']          = None
         sim_state['total_realized_pnl']  = 0.0
-        sim_state['budget']              = SIM_BUDGET_PER_COIN
+        sim_state['budget']              = SIM_DEFAULT_BUDGET
+        sim_state['initial_budget']      = SIM_DEFAULT_BUDGET
+        sim_state['trade_pct']           = SIM_DEFAULT_TRADE_PCT
     return jsonify({'status': 'reset'})
 
 
@@ -639,15 +676,27 @@ def api_meme_state():
     wins   = [t for t in trades if t['win']]
     losses = [t for t in trades if not t['win']]
 
+    locked_budget = sum(p['cost'] for p in enriched_positions.values())
+    free_budget   = round(state['budget'] - locked_budget, 4)
+    trade_amount  = round(state['budget'] * state['trade_pct'], 4)
+    budget_change = round(state['budget'] - state['initial_budget'], 4)
+
     return jsonify({
-        'running':     state['running'],
-        'started_at':  state['started_at'],
-        'budget':      state['budget'],
-        'last_check':  state['last_check'],
-        'next_check':  state['next_check'],
-        'positions':   enriched_positions,
-        'trades':      trades,
-        'signals':     state['signals'],
+        'running':        state['running'],
+        'started_at':     state['started_at'],
+        'budget':         state['budget'],
+        'initial_budget': state['initial_budget'],
+        'trade_pct':      state['trade_pct'],
+        'trade_amount':   trade_amount,
+        'free_budget':    free_budget,
+        'locked_budget':  locked_budget,
+        'budget_change':  budget_change,
+        'budget_change_fmt': f"{'+'if budget_change>=0 else ''}{budget_change:.2f}$",
+        'last_check':     state['last_check'],
+        'next_check':     state['next_check'],
+        'positions':      enriched_positions,
+        'trades':         trades,
+        'signals':        state['signals'],
         'stats': {
             'total_trades':         len(trades),
             'open_positions':       len(enriched_positions),
@@ -670,15 +719,19 @@ def api_meme_state():
 
 @app.route('/api/meme/start', methods=['POST'])
 def api_meme_start():
-    body   = request.get_json(silent=True) or {}
-    budget = float(body.get('budget', SIM_BUDGET_PER_COIN))
+    body      = request.get_json(silent=True) or {}
+    budget    = float(body.get('budget', SIM_DEFAULT_BUDGET))
+    trade_pct = float(body.get('trade_pct', SIM_DEFAULT_TRADE_PCT))
+    trade_pct = max(0.01, min(trade_pct, 1.0))
 
     with meme_sim_lock:
         if meme_sim_state['running']:
             return jsonify({'status': 'already running'})
-        meme_sim_state['running']    = True
-        meme_sim_state['started_at'] = now_iso()
-        meme_sim_state['budget']     = budget
+        meme_sim_state['running']        = True
+        meme_sim_state['started_at']     = now_iso()
+        meme_sim_state['budget']         = budget
+        meme_sim_state['initial_budget'] = budget
+        meme_sim_state['trade_pct']      = trade_pct
 
     def first_tick():
         try:
@@ -686,7 +739,8 @@ def api_meme_start():
         except Exception as e:
             print(f"[MEME SIM FIRST TICK] {e}")
     threading.Thread(target=first_tick, daemon=True).start()
-    return jsonify({'status': 'started', 'budget': budget})
+    return jsonify({'status': 'started', 'budget': budget, 'trade_pct': trade_pct,
+                    'trade_amount': round(budget * trade_pct, 2)})
 
 
 @app.route('/api/meme/stop', methods=['POST'])
@@ -707,7 +761,9 @@ def api_meme_reset():
         meme_sim_state['last_check']         = None
         meme_sim_state['next_check']         = None
         meme_sim_state['total_realized_pnl'] = 0.0
-        meme_sim_state['budget']             = SIM_BUDGET_PER_COIN
+        meme_sim_state['budget']             = SIM_DEFAULT_BUDGET
+        meme_sim_state['initial_budget']     = SIM_DEFAULT_BUDGET
+        meme_sim_state['trade_pct']          = SIM_DEFAULT_TRADE_PCT
     return jsonify({'status': 'reset'})
 
 
