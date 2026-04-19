@@ -302,6 +302,22 @@ td.num { font-family: ui-monospace, monospace; }
 }
 .strategy-tag b { color: var(--primary); }
 @media(max-width:640px){ .strategy-tag { display: none; } }
+.controls-center {
+  flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 16px;
+}
+.strategy-display {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: var(--sc-highest); border: 1px solid rgba(162,201,255,0.15);
+  border-radius: 10px; padding: 10px 20px; min-width: 260px; max-width: 480px; width: 100%;
+}
+.strategy-display .sd-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.12em; color: var(--on-sv); text-transform: uppercase;
+}
+.strategy-display .sd-value {
+  font-size: 13px; font-weight: 700; color: var(--primary); letter-spacing: 0.02em; text-align: center;
+}
+.strategy-display.meme .sd-value { color: var(--secondary); }
+@media(max-width:900px){ .controls-center { display: none; } }
 .controls-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pill {
   padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 900;
@@ -547,6 +563,12 @@ td.num { font-family: ui-monospace, monospace; }
           </div>
           <div class="strategy-tag">Strateji: <b>15m BUY + 4H onay · ATR×2.5</b></div>
         </div>
+        <div class="controls-center">
+          <div class="strategy-display">
+            <span class="sd-label">Aktif Strateji</span>
+            <span class="sd-value">15m BUY + 4H onay · ATR×2.5</span>
+          </div>
+        </div>
         <div class="controls-right">
           <span id="simPill" class="pill">KAPALI</span>
           <div class="btn-group">
@@ -655,6 +677,12 @@ td.num { font-family: ui-monospace, monospace; }
             <input id="memeTradePct" type="number" value="10" min="1" max="100" step="1" style="width:60px"/>
           </div>
           <div class="strategy-tag">Strateji: <b style="color:var(--secondary)">15m BUY · ATR×2.5 · Sadece MEME</b></div>
+        </div>
+        <div class="controls-center">
+          <div class="strategy-display meme">
+            <span class="sd-label">Aktif Strateji</span>
+            <span class="sd-value">15m BUY · ATR×2.5 · Sadece MEME</span>
+          </div>
         </div>
         <div class="controls-right">
           <span id="memePill" class="pill">KAPALI</span>
